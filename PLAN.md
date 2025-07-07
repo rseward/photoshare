@@ -48,7 +48,7 @@ The web service will expose an API compatible with the unsplash API and provide 
 - The slide show interface shall provide a pause / resume toggle button near the center of the time display bar at the bottom of the photo. While the slideshow is running pressing pause will pause the slideshow and toggle to a resume button and pressing resume will resume the slideshow and toggle back to a pause button.
 - The slide show interface shall provide next and previous buttons. The previous button appears to the center left edge of the time display bar and the next button appears to the right edge of the "time display bar".
 - The slide show interface shall provide a delete button to mark a photo for deletion. The button will appear on the left edge of the file name bar at the top of the photo. When pressed the button will call a backend endpoint, /photo/delete/{photo_id} to append the full path of the photo identified by the ID to a file named photos_to_delete.txt in the same directory as the database.
-
+- The slide show interface shall provide a tag input box that will allow the user to tag the photo with arbitary text in the database. Create a new tag field in the database and add the tag to the photo in the database. Pressing enter in the field will send the tag to the backend endpoint, /photo/tag/{photo_id}. The tag input field will appear on the right hand side of the file name bar at the top of the photo. The field will accomodate at least 30 characters.
 
 ## Future Enhancements
 

@@ -32,7 +32,10 @@
             text-shadow: 1px 1px 2px black; font-size: 1.2em;
             display: flex; justify-content: center; align-items: center;
         }
-        #top-overlay { top: 0; }
+        #top-overlay {
+            top: 0;
+            justify-content: space-between; /* Key change for layout */
+        }
         #bottom-overlay { bottom: 0; }
         .control-button {
             background-color: var(--button-bg-color);
@@ -45,10 +48,21 @@
         .control-button:hover { background-color: var(--button-hover-bg-color); }
         #delete-button {
             background-color: var(--delete-button-bg-color);
-            position: absolute; left: 15px;
         }
         #delete-button:hover { background-color: var(--delete-button-hover-bg-color); }
-        #filename-display { margin: 0 100px; /* Make space for delete button */ }
+        #filename-display {
+            flex-grow: 1; /* Allow filename to take up space */
+            text-align: center;
+            margin: 0 20px;
+        }
+        #tag-input {
+            background-color: var(--button-bg-color);
+            border: 1px solid var(--overlay-text-color);
+            color: var(--overlay-text-color);
+            padding: 5px; border-radius: 5px;
+            width: 350px; /* Accommodates > 30 chars */
+            font-size: 0.9em;
+        }
         #time-display { margin: 0 20px; }
         #prev-button { position: absolute; left: 15px; }
         #next-button { position: absolute; right: 15px; }
@@ -59,6 +73,7 @@
         <div id="top-overlay" class="overlay">
             <button id="delete-button" class="control-button">Delete</button>
             <span id="filename-display"></span>
+            <input type="text" id="tag-input" placeholder="Enter tags...">
         </div>
         <div id="bottom-overlay" class="overlay">
             <button id="prev-button" class="control-button">Previous</button>
@@ -77,6 +92,7 @@
         const nextButton = document.getElementById('next-button');
         const prevButton = document.getElementById('prev-button');
         const deleteButton = document.getElementById('delete-button');
+        const tagInput = document.getElementById('tag-input');
 
         let currentPhoto = null;
         let photoHistory = [];
@@ -117,26 +133,45 @@
                 slideshowContainer.insertBefore(img, filenameDisplay.parentElement);
                 currentPhoto = { id: photoData.id, imageElement: img };
                 filenameDisplay.textContent = photoData.filename;
+                tagInput.value = photoData.tags || '';
                 updateDateTime();
             };
         }
 
         async function deleteCurrentImage() {
             if (!currentPhoto || !confirm("Are you sure you want to mark this photo for deletion?")) return;
-            
             try {
                 const response = await fetch(`/photo/delete/${currentPhoto.id}`, {
                     method: 'POST', mode: 'cors',
                     headers: { 'Authorization': `Client-ID ${apiKey}` }
                 });
                 if (!response.ok) throw new Error((await response.json()).detail || "Failed to delete photo");
-                
-                // Photo marked for deletion, now show the next one
                 fetchAndDisplayPhoto('next');
-
             } catch (error) {
                 console.error('Delete error:', error);
                 filenameDisplay.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function handleTagSubmit(event) {
+            if (event.key === 'Enter' && currentPhoto) {
+                const tags = tagInput.value;
+                try {
+                    const response = await fetch(`/photo/tag/${currentPhoto.id}`, {
+                        method: 'POST', mode: 'cors',
+                        headers: {
+                            'Authorization': `Client-ID ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ tags: tags })
+                    });
+                    if (!response.ok) throw new Error((await response.json()).detail || "Failed to save tags");
+                    tagInput.style.backgroundColor = '#005000';
+                    setTimeout(() => { tagInput.style.backgroundColor = ''; }, 1000);
+                } catch (error) {
+                    console.error('Tagging error:', error);
+                    alert(`Error saving tags: ${error.message}`);
+                }
             }
         }
 
@@ -171,6 +206,7 @@
         nextButton.addEventListener('click', showNext);
         prevButton.addEventListener('click', showPrevious);
         deleteButton.addEventListener('click', deleteCurrentImage);
+        tagInput.addEventListener('keydown', handleTagSubmit);
 
         // Initial Load
         fetchAndDisplayPhoto();

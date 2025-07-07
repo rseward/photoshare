@@ -161,6 +161,35 @@ async def mark_photo_for_deletion(photo_id: int, authorization: Optional[str] = 
 
     return {}
 
+@app.post("/photo/tag/{photo_id}", status_code=204)
+async def tag_photo(photo_id: int, request: Request, authorization: Optional[str] = Header(None)):
+    # Authentication
+    api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
+    if not api_key_env or not authorization or authorization != f"Client-ID {api_key_env}":
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
+
+    try:
+        data = await request.json()
+        tags = data.get("tags")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request body.")
+
+    if tags is None:
+        raise HTTPException(status_code=400, detail="Missing 'tags' in request body.")
+
+    conn = database.get_db_connection()
+    try:
+        conn.execute("UPDATE photos SET tags = ? WHERE id = ?", (tags, photo_id))
+        conn.commit()
+        log.info(f"Tagged photo {photo_id} with: '{tags}'")
+    except sqlite3.Error as e:
+        log.error(f"Database error during photo tagging: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
+    finally:
+        conn.close()
+
+    return {}
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Serves the main HTML page."""

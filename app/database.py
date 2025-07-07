@@ -23,7 +23,8 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 path TEXT NOT NULL UNIQUE,
                 width INTEGER NOT NULL,
-                height INTEGER NOT NULL
+                height INTEGER NOT NULL,
+                tags TEXT
             );
         """)
         conn.commit()
