@@ -2,6 +2,9 @@
 
 A simple photo sharing web service which aims to be compatible with unsplash JS clients.
 
+This project was/is a collaboration between gemini-cli and myself. Gemini-cli and I have spent approximately 4 man-hours (my time) on the project so far. This has been a project I have wanted to implement for some time. I have a magic-mirror on my desk with plugins to pull images from unsplash. My goal is to alter that plugin to pull images from my photo collection instead of unsplash using this application.
+
+
 ## Running the application
 
     - `PHOTOSHARE_PHOTO_DIRS`: A comma-separated list of directories to scan for photos.

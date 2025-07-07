@@ -7,6 +7,8 @@ The web service will expose an API compatible with the unsplash API and provide 
   - https://unsplash.com/documentation
   - https://github.com/unsplash/unsplash-js
 
+This project was/is a collaboration between me and gemini-cli. Gemini-cli have spent approximately 4 man-hours (my time) on the project so far. This has been a project I have wanted to implement for some time. I have a magic-mirror on my desk with plugins to pull images from unsplash. My goal is to alter that plugin to pull images from my photo collection instead of unsplash using this application.
+
 ## Technical Requirements
 
 - The application will be written in Python.
