@@ -7,7 +7,6 @@ The web service will expose an API compatible with the unsplash API and provide 
   - https://unsplash.com/documentation
   - https://github.com/unsplash/unsplash-js
 
-This project was/is a collaboration between me and gemini-cli. Gemini-cli have spent approximately 4 man-hours (my time) on the project so far. This has been a project I have wanted to implement for some time. I have a magic-mirror on my desk with plugins to pull images from unsplash. My goal is to alter that plugin to pull images from my photo collection instead of unsplash using this application.
 
 ## Technical Requirements
 
@@ -37,6 +36,18 @@ This project was/is a collaboration between me and gemini-cli. Gemini-cli have s
 - Periodically log the number of photos discovered and the photos discovered per second metric to the log file during the indexing.
 - Allow the indexing thread to be run in a seperate process by providing a click command line interface to start the indexing thread. If a index.lock file exists the web service will not start the indexing thread.
 
+## Photo Preview Requirements
+
+- The root / index page of the web service will serve up a slide show of random photos from the collection
+- The root page should have a minimal design with a dark theme
+- The root page should embed the configured SHAREPHOTO_API_KEY in the html or JS. So it works automatically with the API backend.
+- The root page should expand photos to full size when loaded.
+- A new photo should be pulled from the API every 30 seconds automatically.
+- The root page should overlay the current date and time at the bottom of the photo.
+- The root page should overlay the photo's name at the top of the photo.
+- The slide show interface shall provide a pause / resume toggle button near the center of the time display bar at the bottom of the photo. While the slideshow is running pressing pause will pause the slideshow and toggle to a resume button and pressing resume will resume the slideshow and toggle back to a pause button.
+- The slide show interface shall provide next and previous buttons. The previous button appears to the center left edge of the time display bar and the next button appears to the right edge of the "time display bar".
+- The slide show interface shall provide a delete button to mark a photo for deletion. The button will appear on the left edge of the file name bar at the top of the photo. When pressed the button will call a backend endpoint, /photo/delete/{photo_id} to append the full path of the photo identified by the ID to a file named photos_to_delete.txt in the same directory as the database.
 
 
 ## Future Enhancements

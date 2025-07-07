@@ -3,59 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhotoShare</title>
+    <title>PhotoShare Slideshow</title>
     <style>
-        body { font-family: sans-serif; text-align: center; }
-        img { max-width: 90%; max-height: 80vh; margin-top: 20px; }
+        :root {
+            --overlay-text-color: rgba(255, 255, 255, 0.9);
+            --overlay-bg-color: rgba(0, 0, 0, 0.5);
+            --button-bg-color: rgba(40, 40, 40, 0.8);
+            --button-hover-bg-color: rgba(60, 60, 60, 0.9);
+            --delete-button-bg-color: rgba(150, 0, 0, 0.7);
+            --delete-button-hover-bg-color: rgba(200, 0, 0, 0.9);
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #121212;
+            color: var(--overlay-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        #slideshow-container {
+            width: 100%; height: 100%; display: flex;
+            justify-content: center; align-items: center; position: relative;
+        }
+        #slideshow-container img {
+            width: 100%; height: 100%; object-fit: contain;
+        }
+        .overlay {
+            position: absolute; left: 0; right: 0;
+            padding: 15px; background-color: var(--overlay-bg-color);
+            text-shadow: 1px 1px 2px black; font-size: 1.2em;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #top-overlay { top: 0; }
+        #bottom-overlay { bottom: 0; }
+        .control-button {
+            background-color: var(--button-bg-color);
+            border: 1px solid var(--overlay-text-color);
+            color: var(--overlay-text-color);
+            cursor: pointer; font-size: 1em; padding: 5px 15px;
+            border-radius: 5px; margin: 0 10px;
+            transition: background-color 0.2s;
+        }
+        .control-button:hover { background-color: var(--button-hover-bg-color); }
+        #delete-button {
+            background-color: var(--delete-button-bg-color);
+            position: absolute; left: 15px;
+        }
+        #delete-button:hover { background-color: var(--delete-button-hover-bg-color); }
+        #filename-display { margin: 0 100px; /* Make space for delete button */ }
+        #time-display { margin: 0 20px; }
+        #prev-button { position: absolute; left: 15px; }
+        #next-button { position: absolute; right: 15px; }
     </style>
 </head>
 <body>
-    <h1>PhotoShare</h1>
-    <label for="apiKey">Client-ID</label>
-    <input type="text" id="apiKey" placeholder="Enter your API Key">
-    <button onclick="getRandomPhoto()">Get Random Photo</button>
-    <div id="photoContainer"></div>
+    <div id="slideshow-container">
+        <div id="top-overlay" class="overlay">
+            <button id="delete-button" class="control-button">Delete</button>
+            <span id="filename-display"></span>
+        </div>
+        <div id="bottom-overlay" class="overlay">
+            <button id="prev-button" class="control-button">Previous</button>
+            <span id="time-display"></span>
+            <button id="pause-resume-button" class="control-button">Pause</button>
+            <button id="next-button" class="control-button">Next</button>
+        </div>
+    </div>
 
     <script>
-        async function getRandomPhoto() {
-            const apiKey = document.getElementById('apiKey').value;
+        const apiKey = "{{ api_key }}";
+        const slideshowContainer = document.getElementById('slideshow-container');
+        const filenameDisplay = document.getElementById('filename-display');
+        const timeDisplay = document.getElementById('time-display');
+        const pauseResumeButton = document.getElementById('pause-resume-button');
+        const nextButton = document.getElementById('next-button');
+        const prevButton = document.getElementById('prev-button');
+        const deleteButton = document.getElementById('delete-button');
+
+        let currentPhoto = null;
+        let photoHistory = [];
+        let slideshowInterval;
+        let isPaused = false;
+
+        async function fetchAndDisplayPhoto(direction = null) {
             if (!apiKey) {
-                alert('Please enter an API key.');
+                filenameDisplay.textContent = "Error: API Key not configured on server.";
                 return;
             }
-
-            const photoContainer = document.getElementById('photoContainer');
-            photoContainer.innerHTML = 'Loading...';
-
+            let url = '/photos/random';
+            if (direction && currentPhoto) {
+                url += `?current_photo_id=${currentPhoto.id}&direction=${direction}`;
+            }
             try {
-                const response = await fetch('/photos/random', {
-                    method: 'GET',
-                    mode: 'cors',
-                    cache: 'no-cache',
-                    headers: {
-                        'Authorization': `Client-ID ${apiKey}`
-                    },
-                    redirect: 'follow',
-                    referrerPolicy: 'no-referrer'
+                const response = await fetch(url, {
+                    method: 'GET', mode: 'cors',
+                    headers: { 'Authorization': `Client-ID ${apiKey}` }
                 });
-
-                if (response.ok) {
-                    const photoData = await response.json();
-                    const imageUrl = photoData.urls.raw;
-                    
-                    photoContainer.innerHTML = ''; // Clear loading text
-                    const img = document.createElement('img');
-                    img.src = imageUrl;
-                    photoContainer.appendChild(img);
-                } else {
-                    const error = await response.json();
-                    photoContainer.innerHTML = `Error: ${error.detail}`;
-                }
+                if (!response.ok) throw new Error((await response.json()).detail || "Failed to fetch photo");
+                const photoData = await response.json();
+                if (direction !== 'previous') photoHistory.push(photoData.id);
+                displayPhoto(photoData);
             } catch (error) {
-                console.error('Error fetching photo:', error);
-                photoContainer.innerHTML = 'An error occurred while fetching the photo.';
+                console.error('Slideshow error:', error);
+                filenameDisplay.textContent = `Error: ${error.message}`;
             }
         }
+
+        function displayPhoto(photoData) {
+            const img = new Image();
+            img.src = photoData.urls.raw;
+            img.onload = () => {
+                if (currentPhoto && slideshowContainer.contains(currentPhoto.imageElement)) {
+                    slideshowContainer.removeChild(currentPhoto.imageElement);
+                }
+                slideshowContainer.insertBefore(img, filenameDisplay.parentElement);
+                currentPhoto = { id: photoData.id, imageElement: img };
+                filenameDisplay.textContent = photoData.filename;
+                updateDateTime();
+            };
+        }
+
+        async function deleteCurrentImage() {
+            if (!currentPhoto || !confirm("Are you sure you want to mark this photo for deletion?")) return;
+            
+            try {
+                const response = await fetch(`/photo/delete/${currentPhoto.id}`, {
+                    method: 'POST', mode: 'cors',
+                    headers: { 'Authorization': `Client-ID ${apiKey}` }
+                });
+                if (!response.ok) throw new Error((await response.json()).detail || "Failed to delete photo");
+                
+                // Photo marked for deletion, now show the next one
+                fetchAndDisplayPhoto('next');
+
+            } catch (error) {
+                console.error('Delete error:', error);
+                filenameDisplay.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function updateDateTime() { timeDisplay.textContent = new Date().toLocaleString(); }
+        function togglePauseResume() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                clearInterval(slideshowInterval);
+                pauseResumeButton.textContent = 'Resume';
+            } else {
+                slideshowInterval = setInterval(() => fetchAndDisplayPhoto('next'), 30000);
+                pauseResumeButton.textContent = 'Pause';
+            }
+        }
+        function showNext() {
+            if (!isPaused) togglePauseResume();
+            fetchAndDisplayPhoto('next');
+        }
+        function showPrevious() {
+            if (!isPaused) togglePauseResume();
+            if (photoHistory.length > 1) {
+                photoHistory.pop();
+                const prevPhotoId = photoHistory.pop();
+                fetchAndDisplayPhoto('previous', prevPhotoId);
+            } else {
+                fetchAndDisplayPhoto();
+            }
+        }
+        
+        // Event Listeners
+        pauseResumeButton.addEventListener('click', togglePauseResume);
+        nextButton.addEventListener('click', showNext);
+        prevButton.addEventListener('click', showPrevious);
+        deleteButton.addEventListener('click', deleteCurrentImage);
+
+        // Initial Load
+        fetchAndDisplayPhoto();
+        slideshowInterval = setInterval(() => fetchAndDisplayPhoto('next'), 30000);
+        setInterval(updateDateTime, 1000);
     </script>
 </body>
 </html>
