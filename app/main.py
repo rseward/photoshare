@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import database, indexing
@@ -47,7 +48,15 @@ app.add_middleware(
     allow_headers=["Authorization"], # Explicitly allow only the required header
 )
 
+# Mount static files directory
+app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
+
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+# Add favicon endpoint
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(Path(__file__).parent / "static" / "favicon.ico")
 
 from typing import Optional
 
