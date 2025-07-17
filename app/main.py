@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -243,8 +243,19 @@ async def tag_photo(photo_id: int, request: Request, authorization: Optional[str
 
     return {}
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    """Serves the main HTML page."""
+@app.get("/", response_class=RedirectResponse)
+async def read_root():
+    """Redirects the root URL to the slideshow page."""
+    return RedirectResponse(url="/ui/slideshow")
+
+@app.get("/ui/slideshow", response_class=HTMLResponse)
+async def slideshow(request: Request):
+    """Serves the slideshow HTML page."""
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
-    return templates.TemplateResponse("index.html", {"request": request, "api_key": api_key})
+    return templates.TemplateResponse("index.html", {"request": request, "api_key": api_key, "tag": None})
+
+@app.get("/ui/slideshow/{tag}", response_class=HTMLResponse)
+async def slideshow_by_tag(request: Request, tag: str):
+    """Serves the slideshow HTML page filtered by tag."""
+    api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
+    return templates.TemplateResponse("index.html", {"request": request, "api_key": api_key, "tag": tag})

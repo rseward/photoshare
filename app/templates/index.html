@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhotoShare Slideshow</title>
+    <title>PhotoShare Slideshow{% if tag %} - {{ tag }}{% endif %}</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <style>
         :root {
@@ -101,6 +101,7 @@
 
     <script>
         const apiKey = "{{ api_key }}";
+        const slideshowTag = "{{ tag or '' }}";
         const slideshowContainer = document.getElementById('slideshow-container');
         const filenameDisplay = document.getElementById('filename-display');
         const timeDisplay = document.getElementById('time-display');
@@ -120,10 +121,19 @@
                 filenameDisplay.textContent = "Error: API Key not configured on server.";
                 return;
             }
-            let url = '/photos/random';
-            if (direction && currentPhoto) {
-                url += `?current_photo_id=${currentPhoto.id}&direction=${direction}`;
+            
+            let url;
+            if (slideshowTag) {
+                // Use tag-specific endpoint when a tag is provided
+                url = `/photos/bytag/${slideshowTag}`;
+            } else {
+                // Otherwise use random photos endpoint
+                url = '/photos/random';
+                if (direction && currentPhoto) {
+                    url += `?current_photo_id=${currentPhoto.id}&direction=${direction}`;
+                }
             }
+            
             try {
                 const response = await fetch(url, {
                     method: 'GET', mode: 'cors',
