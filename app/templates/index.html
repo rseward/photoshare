@@ -38,6 +38,20 @@
             justify-content: space-between; /* Key change for layout */
         }
         #bottom-overlay { bottom: 0; }
+        .tags-display {
+            background-color: var(--overlay-bg-color);
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            margin-left: 10px;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tags-display:empty {
+            display: none;
+        }
         .control-button {
             background-color: var(--button-bg-color);
             border: 1px solid var(--overlay-text-color);
@@ -74,6 +88,7 @@
         <div id="top-overlay" class="overlay">
             <button id="delete-button" class="control-button">Delete</button>
             <span id="filename-display"></span>
+            <span id="tags-display" class="tags-display" title="Photo tags"></span>
             <input type="text" id="tag-input" placeholder="Enter tags...">
         </div>
         <div id="bottom-overlay" class="overlay">

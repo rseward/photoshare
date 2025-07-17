@@ -60,6 +60,49 @@ async def favicon():
 
 from typing import Optional
 
+@app.get("/photos/bytag/{tag}", response_class=JSONResponse)
+async def get_random_photo_by_tag(
+    request: Request,
+    tag: str,
+    authorization: Optional[str] = Header(None)
+):
+    # Simplified, manual authentication check
+    api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
+    if not api_key_env:
+        raise HTTPException(status_code=500, detail="Server not configured for authentication.")
+    
+    if not authorization or authorization != f"Client-ID {api_key_env}":
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
+
+    conn = database.get_db_connection()
+    try:
+        # Fetch a random photo with the specified tag
+        query = "SELECT id, path, width, height, tags FROM photos WHERE tags LIKE ? ORDER BY RANDOM() LIMIT 1"
+        tag_pattern = f"%{tag}%"
+        photo = conn.execute(query, (tag_pattern,)).fetchone()
+    except sqlite3.Error as e:
+        log.error(f"Database error when fetching photo by tag {tag}: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
+    finally:
+        conn.close()
+
+    if not photo:
+        raise HTTPException(status_code=404, detail=f"No photos found with tag: {tag}")
+
+    base_url = str(request.base_url)
+    photo_url = f"{base_url}photos/{photo['id']}"
+
+    response_data = {
+        "id": photo['id'],
+        "filename": Path(photo['path']).name,
+        "width": photo['width'],
+        "height": photo['height'],
+        "tags": photo['tags'],
+        "urls": {"raw": photo_url, "full": photo_url, "regular": photo_url, "small": photo_url, "thumb": photo_url},
+        "links": {"self": photo_url, "html": photo_url, "download": photo_url}
+    }
+    return JSONResponse(content=response_data)
+
 @app.get("/photos/random", response_class=JSONResponse)
 async def get_random_photo_details(
     request: Request, 
@@ -79,22 +122,22 @@ async def get_random_photo_details(
     try:
         if direction and current_photo_id is not None:
             if direction == "next":
-                query = "SELECT id, path, width, height FROM photos WHERE id > ? ORDER BY id ASC LIMIT 1"
+                query = "SELECT id, path, width, height, tags FROM photos WHERE id > ? ORDER BY id ASC LIMIT 1"
                 photo = conn.execute(query, (current_photo_id,)).fetchone()
                 # If we're at the end, loop back to the first photo
                 if not photo:
-                    photo = conn.execute("SELECT id, path, width, height FROM photos ORDER BY id ASC LIMIT 1").fetchone()
+                    photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY id ASC LIMIT 1").fetchone()
             elif direction == "previous":
-                query = "SELECT id, path, width, height FROM photos WHERE id < ? ORDER BY id DESC LIMIT 1"
+                query = "SELECT id, path, width, height, tags FROM photos WHERE id < ? ORDER BY id DESC LIMIT 1"
                 photo = conn.execute(query, (current_photo_id,)).fetchone()
                 # If we're at the beginning, loop back to the last photo
                 if not photo:
-                    photo = conn.execute("SELECT id, path, width, height FROM photos ORDER BY id DESC LIMIT 1").fetchone()
+                    photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY id DESC LIMIT 1").fetchone()
             else: # Default to random if direction is invalid
-                photo = conn.execute("SELECT id, path, width, height FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+                photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
         else:
              # Fetch a random photo from the database
-            photo = conn.execute("SELECT id, path, width, height FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+            photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
 
     except sqlite3.Error as e:
         log.error(f"Database error when fetching photo: {e}")
@@ -113,6 +156,7 @@ async def get_random_photo_details(
         "filename": Path(photo['path']).name,
         "width": photo['width'],
         "height": photo['height'],
+        "tags": photo['tags'],
         "urls": {"raw": photo_url, "full": photo_url, "regular": photo_url, "small": photo_url, "thumb": photo_url},
         "links": {"self": photo_url, "html": photo_url, "download": photo_url}
     }
