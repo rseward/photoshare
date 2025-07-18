@@ -243,10 +243,50 @@ async def tag_photo(photo_id: int, request: Request, authorization: Optional[str
 
     return {}
 
+
+@app.get("/ui/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    """Serves the dashboard HTML page."""
+    conn = database.get_db_connection()
+    try:
+        photo_count = conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
+        photos = conn.execute("SELECT id, tags FROM photos").fetchall()
+        
+        # Select a random photo for the background
+        random_photo = conn.execute("SELECT id FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+        background_image_url = f"/photos/{random_photo['id']}" if random_photo else ""
+
+    except sqlite3.Error as e:
+        log.error(f"Database error on dashboard: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
+    finally:
+        conn.close()
+
+    # Generate tag cloud data
+    tag_counts = {}
+    for photo in photos:
+        if photo['tags']:
+            for tag in photo['tags'].split(','):
+                tag = tag.strip()
+                if tag:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    
+    # Normalize tag sizes for the cloud display
+    max_count = max(tag_counts.values()) if tag_counts else 0
+    tag_cloud = {tag: 1 + (count / max_count * 1.5) if max_count > 0 else 1 for tag, count in tag_counts.items()}
+
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "photo_count": photo_count,
+        "tag_cloud": tag_cloud,
+        "background_image_url": background_image_url
+    })
+
+
 @app.get("/", response_class=RedirectResponse)
 async def read_root():
     """Redirects the root URL to the slideshow page."""
-    return RedirectResponse(url="/ui/slideshow")
+    return RedirectResponse(url="/ui/dashboard")
 
 @app.get("/ui/slideshow", response_class=HTMLResponse)
 async def slideshow(request: Request):

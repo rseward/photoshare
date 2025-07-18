@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoShare Dashboard</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+        }
+        #background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(8px) brightness(0.5);
+            transform: scale(1.1);
+            z-index: -1;
+        }
+        .content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        .summary {
+            margin-bottom: 40px;
+        }
+        .slideshow-button {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 15px 30px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 20px;
+            margin-bottom: 40px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .slideshow-button:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+        .tag-search {
+            margin-bottom: 40px;
+        }
+        .tag-search input {
+            padding: 10px;
+            width: 300px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 80%;
+        }
+        .tag-cloud a {
+            text-decoration: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s;
+        }
+        .tag-cloud a:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="background"></div>
+    <div class="content">
+        <div class="summary">
+            <h1>Photo Summary</h1>
+            <p>There are {{ photo_count }} photos in the database.</p>
+        </div>
+        <a href="/ui/slideshow" class="slideshow-button">View Slideshow</a>
+        <div class="tag-search">
+            <input type="text" id="tag-input" placeholder="Enter a tag to search">
+        </div>
+        <div class="tag-cloud">
+            {% for tag, size in tag_cloud.items() %}
+                <a href="/ui/slideshow/{{ tag }}" style="font-size: {{ size }}em;">{{ tag }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    <script>
+        document.getElementById('tag-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                window.location.href = '/ui/slideshow/' + this.value;
+            }
+        });
+
+        // Set background image
+        const backgroundDiv = document.getElementById('background');
+        backgroundDiv.style.backgroundImage = "url('{{ background_image_url }}')";
+    </script>
+</body>
+</html>
