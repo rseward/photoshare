@@ -4,7 +4,7 @@ A simple lightweight web photosharing app
 
 ## Pending Tasks
 
-- Modify the "TAG word cloud" such that only the top 30 tags are displayed. Make each tag in the cloud be a clickable link to the /ui/slideshow/{tag} URL.
+- Add a home icon using app/static/imgs/home-icon-cropped-392x392.png to the top left of the dashboard and slideshow pages. On the slideshow page push the delete button slightly to the right of the home icon. Scale the icon image to 50x50 pixels. The home icon should be a link to the /ui/dashboard url.
 
 ## Completed Tasks
 
@@ -18,4 +18,7 @@ A simple lightweight web photosharing app
 - Create a /ui/dashboard URL / page that displays a summary of the photos in the database. The background to the page should be a randomly selected photo from the database.
 - On the dashboard a promenient transparent button should be provided to link the user to the /ui/slideshow URL.
 - On the dashboard a tag input field should be provided to allow the user to enter a tag and then link to the /ui/slideshow/{tag} URL.
+- Modify the "TAG word cloud" such that only the top 30 tags are displayed. Make each tag in the cloud be a clickable link to the /ui/slideshow/{tag} URL.
+- In the "TAG word cloud" add a tooltip that displays the number of photos that have that tag. Also url encode the TAG text for it's slideshow URL.
+- Alter the /ui/slideshow/{tag} URL to invert the url_plus functions escaping of the TAG text and use the decoded TAG text to create the slideshow.
 
