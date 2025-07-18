@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, unquote_plus
 from . import database, indexing
 
 # Configure logging
@@ -311,4 +311,5 @@ async def slideshow(request: Request):
 async def slideshow_by_tag(request: Request, tag: str):
     """Serves the slideshow HTML page filtered by tag."""
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
-    return templates.TemplateResponse("index.html", {"request": request, "api_key": api_key, "tag": tag})
+    decoded_tag = unquote_plus(tag)
+    return templates.TemplateResponse("index.html", {"request": request, "api_key": api_key, "tag": decoded_tag})
