@@ -103,8 +103,8 @@
             <input type="text" id="tag-input" placeholder="Enter a tag to search">
         </div>
         <div class="tag-cloud">
-            {% for tag, size in tag_cloud.items() %}
-                <a href="/ui/slideshow/{{ tag }}" style="font-size: {{ size }}em;">{{ tag }}</a>
+            {% for tag in tag_cloud %}
+                <a href="/ui/slideshow/{{ tag.encoded_text }}" title="{{ tag.count }} photos" style="font-size: {{ tag.size }}em;">{{ tag.text }}</a>
             {% endfor %}
         </div>
     </div>

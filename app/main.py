@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from urllib.parse import quote_plus
 from . import database, indexing
 
 # Configure logging
@@ -277,7 +278,15 @@ async def dashboard(request: Request):
 
     # Normalize tag sizes for the cloud display
     max_count = max(top_30_tags.values()) if top_30_tags else 0
-    tag_cloud = {tag: 1 + (count / max_count * 1.5) if max_count > 0 else 1 for tag, count in top_30_tags.items()}
+    tag_cloud = [
+        {
+            "text": tag,
+            "size": 1 + (count / max_count * 1.5) if max_count > 0 else 1,
+            "count": count,
+            "encoded_text": quote_plus(tag)
+        }
+        for tag, count in top_30_tags.items()
+    ]
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
