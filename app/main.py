@@ -271,9 +271,13 @@ async def dashboard(request: Request):
                 if tag:
                     tag_counts[tag] = tag_counts.get(tag, 0) + 1
     
+    # Sort tags by count and get the top 30
+    sorted_tags = sorted(tag_counts.items(), key=lambda item: item[1], reverse=True)
+    top_30_tags = dict(sorted_tags[:30])
+
     # Normalize tag sizes for the cloud display
-    max_count = max(tag_counts.values()) if tag_counts else 0
-    tag_cloud = {tag: 1 + (count / max_count * 1.5) if max_count > 0 else 1 for tag, count in tag_counts.items()}
+    max_count = max(top_30_tags.values()) if top_30_tags else 0
+    tag_cloud = {tag: 1 + (count / max_count * 1.5) if max_count > 0 else 1 for tag, count in top_30_tags.items()}
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
