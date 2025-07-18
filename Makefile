@@ -7,3 +7,8 @@ index:
 
 run:
 	./run.sh
+
+backup:
+	rsync -aPv photoshare.db  /cifs/legolas2/family/Pictures/
+
+
