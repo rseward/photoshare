@@ -79,6 +79,7 @@
             padding: 5px; border-radius: 5px;
             width: 350px; /* Accommodates > 30 chars */
             font-size: 0.9em;
+            margin-right: 50px; /* Move away from hamburger menu */
         }
         #time-display { margin: 0 20px; }
         #prev-button { position: absolute; left: 15px; }
@@ -90,6 +91,9 @@
             width: 50px;
             height: 50px;
             z-index: 10;
+        }
+        .tag-info {
+            margin-left: 150px; /* Move towards the center */
         }
         .hamburger-menu {
             position: absolute;
@@ -147,7 +151,7 @@
             <button id="delete-button" class="control-button">Delete</button>
             <span id="filename-display"></span>
             {% if tag %}
-            <span class="tag-info">{{ tag_photo_count }} photos tagged with '{{ tag }}'</span>
+            <span class="tag-info">{{ tag_photo_count }} tagged</span>
             {% endif %}
             <span id="tags-display" class="tags-display" title="Photo tags"></span>
             <input type="text" id="tag-input" placeholder="Enter tags...">
