@@ -11,4 +11,8 @@ run:
 backup:
 	rsync -aPv photoshare.db  /cifs/legolas2/family/Pictures/
 
+test:
+	pytest
+
+
 
