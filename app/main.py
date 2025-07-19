@@ -8,12 +8,18 @@ from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from urllib.parse import quote_plus, unquote_plus
-from . import database, indexing
+from . import database, indexing, zipdownload
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', filename='photoshare.log', filemode='a')
@@ -251,6 +257,7 @@ async def dashboard(request: Request):
     conn = database.get_db_connection()
     try:
         photo_count = conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
+        tagged_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags IS NOT NULL AND tags != ''").fetchone()[0]
         photos = conn.execute("SELECT id, tags FROM photos").fetchall()
         
         # Select a random photo for the background
@@ -291,6 +298,7 @@ async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "photo_count": photo_count,
+        "tagged_photo_count": tagged_photo_count,
         "tag_cloud": tag_cloud,
         "background_image_url": background_image_url
     })
@@ -312,4 +320,27 @@ async def slideshow_by_tag(request: Request, tag: str):
     """Serves the slideshow HTML page filtered by tag."""
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
     decoded_tag = unquote_plus(tag)
-    return templates.TemplateResponse("index.html", {"request": request, "api_key": api_key, "tag": decoded_tag})
+    
+    conn = database.get_db_connection()
+    try:
+        tag_pattern = f"%{decoded_tag}%"
+        tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags LIKE ?", (tag_pattern,)).fetchone()[0]
+    except sqlite3.Error as e:
+        log.error(f"Database error when counting photos for tag {decoded_tag}: {e}")
+        tag_photo_count = 0
+    finally:
+        conn.close()
+
+    return templates.TemplateResponse("index.html", {
+        "request": request, 
+        "api_key": api_key, 
+        "tag": decoded_tag,
+        "tag_photo_count": tag_photo_count
+    })
+
+
+@app.get("/download/tagged/{tag}", response_class=StreamingResponse)
+async def download_tagged_photos(tag: str):
+    """Downloads all photos with a specific tag as a zip file."""
+    downloader = zipdownload.ZipDownloader()
+    return downloader.create_zip_for_tag(tag)
