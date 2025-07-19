@@ -14,5 +14,8 @@ backup:
 test:
 	pytest
 
+query:
+	sqlite3 photoshare.db
+
 
 

@@ -18,12 +18,16 @@ def init_db():
     logging.info(f"Initializing database at {get_db_path()}")
     conn = get_db_connection()
     try:
+        # datetime values are stored as ISO 8601 strings
         conn.execute("""
             CREATE TABLE IF NOT EXISTS photos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 path TEXT NOT NULL UNIQUE,
                 width INTEGER NOT NULL,
                 height INTEGER NOT NULL,
+                geolocation TEXT,
+                datetime_taken TEXT,
+                datetime_added TEXT,
                 tags TEXT
             );
         """)
