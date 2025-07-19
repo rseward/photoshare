@@ -1,0 +1,125 @@
+:root {
+    --overlay-text-color: rgba(255, 255, 255, 0.9);
+    --overlay-bg-color: rgba(0, 0, 0, 0.5);
+    --button-bg-color: rgba(40, 40, 40, 0.8);
+    --button-hover-bg-color: rgba(60, 60, 60, 0.9);
+    --delete-button-bg-color: rgba(150, 0, 0, 0.7);
+    --delete-button-hover-bg-color: rgba(200, 0, 0, 0.9);
+}
+body, html {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; background-color: #121212;
+    color: var(--overlay-text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+#slideshow-container {
+    width: 100%; height: 100%; display: flex;
+    justify-content: center; align-items: center; position: relative;
+}
+#slideshow-container img {
+    width: 100%; height: 100%; object-fit: contain;
+}
+.overlay {
+    position: absolute; left: 0; right: 0;
+    padding: 15px; background-color: var(--overlay-bg-color);
+    text-shadow: 1px 1px 2px black; font-size: 1.2em;
+    display: flex; justify-content: center; align-items: center;
+}
+#top-overlay {
+    top: 0;
+    justify-content: flex-start; /* Align items to the start */
+    padding-left: 75px; /* Add padding to avoid overlap with home icon */
+}
+#bottom-overlay { bottom: 0; }
+.tags-display {
+    background-color: var(--overlay-bg-color);
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    margin-left: 10px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tags-display:empty {
+    display: none;
+}
+.control-button {
+    background-color: var(--button-bg-color);
+    border: 1px solid var(--overlay-text-color);
+    color: var(--overlay-text-color);
+    cursor: pointer; font-size: 1em; padding: 5px 15px;
+    border-radius: 5px; margin: 0 10px;
+    transition: background-color 0.2s;
+}
+.control-button:hover { background-color: var(--button-hover-bg-color); }
+#delete-button {
+    background-color: var(--delete-button-bg-color);
+    margin-left: 0; /* Adjust margin */
+}
+#delete-button:hover { background-color: var(--delete-button-hover-bg-color); }
+#filename-display {
+    flex-grow: 1; /* Allow filename to take up space */
+    text-align: center;
+    margin: 0 20px;
+}
+#tag-input {
+    background-color: var(--button-bg-color);
+    border: 1px solid var(--overlay-text-color);
+    color: var(--overlay-text-color);
+    padding: 5px; border-radius: 5px;
+    width: 350px; /* Accommodates > 30 chars */
+    font-size: 0.9em;
+    margin-right: 60px; /* Move away from hamburger menu */
+}
+#time-display { margin: 0 20px; }
+#prev-button { position: absolute; left: 15px; }
+#next-button { position: absolute; right: 15px; }
+.home-icon {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 50px;
+    height: 50px;
+    z-index: 10;
+}
+.tag-info {
+    margin-left: 185px; /* Move towards the center */
+    margin-right: 30px; /* Add right margin */
+}
+.hamburger-menu {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    z-index: 10;
+    cursor: pointer;
+}
+.hamburger-menu .line {
+    width: 35px;
+    height: 5px;
+    background-color: white;
+    margin: 6px 0;
+    transition: 0.4s;
+}
+.menu {
+    display: none;
+    position: absolute;
+    top: 70px;
+    right: 15px;
+    background-color: var(--overlay-bg-color);
+    border-radius: 5px;
+    padding: 10px;
+    z-index: 11;
+}
+.menu a {
+    color: white;
+    text-decoration: none;
+    display: block;
+    padding: 10px;
+}
+.menu a:hover {
+    background-color: var(--button-hover-bg-color);
+}

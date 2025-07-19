@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from urllib.parse import quote_plus, unquote_plus
-from . import database, indexing, zipdownload
+from . import database, indexing, zipdownload, caching
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', filename='photoshare.log', filemode='a')
@@ -33,6 +33,9 @@ async def lifespan(app: FastAPI):
     database.init_db()
     log.info("Application startup complete.")
     
+    # Start the background cache refresh
+    caching.start_background_refresh()
+
     # Check for a lock file and start the indexer if needed
     db_file = os.environ.get("PHOTOSHARE_DATABASE_FILE", "photoshare.db")
     lock_file = Path(db_file).parent / "index.lock"
@@ -258,7 +261,6 @@ async def dashboard(request: Request):
     try:
         photo_count = conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
         tagged_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags IS NOT NULL AND tags != ''").fetchone()[0]
-        photos = conn.execute("SELECT id, tags FROM photos").fetchall()
         
         # Select a random photo for the background
         random_photo = conn.execute("SELECT id FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
@@ -270,14 +272,8 @@ async def dashboard(request: Request):
     finally:
         conn.close()
 
-    # Generate tag cloud data
-    tag_counts = {}
-    for photo in photos:
-        if photo['tags']:
-            for tag in photo['tags'].split(','):
-                tag = tag.strip()
-                if tag:
-                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    # Get tag counts from cache
+    tag_counts = caching.get_tag_counts()
     
     # Sort tags by count and get the top 30
     sorted_tags = sorted(tag_counts.items(), key=lambda item: item[1], reverse=True)
