@@ -4,6 +4,10 @@ import click
 import os
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set up imports for the application modules
 import sys

@@ -11,3 +11,6 @@ myenv
 photoshare.db
 photoshare.log
 index.lock
+
+# Environment variables
+.env

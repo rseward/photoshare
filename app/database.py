@@ -1,7 +1,7 @@
 import sqlite3
 import logging
 import os
-import cv2
+from datetime import datetime, timezone
 
 def get_db_path():
     """Gets the database file path from the environment variable."""
@@ -37,29 +37,35 @@ def init_db():
     finally:
         conn.close()
 
-def add_photo_to_index(photo_path: str):
-    """Adds a photo to the database index. Skips if it already exists."""
+def add_photo_to_index(photo_path: str, width: int, height: int, geolocation: str | None, datetime_taken: str | None):
+    """Adds or updates a photo in the database index."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM photos WHERE path = ?", (str(photo_path),))
-        if cursor.fetchone():
-            return
-
-        img = cv2.imread(str(photo_path))
-        if img is None:
-            logging.warning(f"Could not read image file, skipping: {photo_path}")
-            return
+        row = cursor.fetchone()
         
-        height, width, _ = img.shape
-        conn.execute(
-            "INSERT INTO photos (path, width, height) VALUES (?, ?, ?)",
-            (str(photo_path), width, height)
-        )
+        if row:
+            # Update existing photo - only update metadata
+            cursor.execute(
+                "UPDATE photos SET geolocation = ?, datetime_taken = ? WHERE id = ?",
+                (geolocation, datetime_taken, row['id'])
+            )
+            logging.info(f"Updated photo metadata: {photo_path}")
+        else:
+            # Insert new photo
+            datetime_added = datetime.now(timezone.utc).isoformat()
+            cursor.execute(
+                "INSERT INTO photos (path, width, height, geolocation, datetime_taken, datetime_added) VALUES (?, ?, ?, ?, ?, ?)",
+                (str(photo_path), width, height, geolocation, datetime_taken, datetime_added)
+            )
+            logging.info(f"Indexed new photo: {photo_path}")
+        
         conn.commit()
-        logging.info(f"Indexed photo: {photo_path}")
 
     except sqlite3.IntegrityError:
+        # This can happen in a race condition if two indexers run at once.
+        logging.warning(f"Integrity error for photo {photo_path}, likely a race condition. Skipping.")
         pass
     except Exception as e:
         logging.error(f"Failed to index photo {photo_path}: {e}")

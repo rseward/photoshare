@@ -7,3 +7,5 @@ pytest
 httpx
 click
 pytest-asyncio
+Pillow
+python-dotenv

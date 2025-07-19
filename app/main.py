@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
@@ -17,9 +18,12 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
 from urllib.parse import quote_plus, unquote_plus
-from . import database, indexing, zipdownload, caching
+
+from . import caching, database, indexing, zipdownload
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', filename='photoshare.log', filemode='a')
@@ -87,7 +91,7 @@ async def get_random_photo_by_tag(
     conn = database.get_db_connection()
     try:
         # Fetch a random photo with the specified tag
-        query = "SELECT id, path, width, height, tags FROM photos WHERE tags LIKE ? ORDER BY RANDOM() LIMIT 1"
+        query = "SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos WHERE tags LIKE ? ORDER BY RANDOM() LIMIT 1"
         tag_pattern = f"%{tag}%"
         photo = conn.execute(query, (tag_pattern,)).fetchone()
     except sqlite3.Error as e:
@@ -108,6 +112,8 @@ async def get_random_photo_by_tag(
         "width": photo['width'],
         "height": photo['height'],
         "tags": photo['tags'],
+        "datetime_taken": photo['datetime_taken'],
+        "geolocation": photo['geolocation'],
         "urls": {"raw": photo_url, "full": photo_url, "regular": photo_url, "small": photo_url, "thumb": photo_url},
         "links": {"self": photo_url, "html": photo_url, "download": photo_url}
     }
@@ -132,22 +138,22 @@ async def get_random_photo_details(
     try:
         if direction and current_photo_id is not None:
             if direction == "next":
-                query = "SELECT id, path, width, height, tags FROM photos WHERE id > ? ORDER BY id ASC LIMIT 1"
+                query = "SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos WHERE id > ? ORDER BY id ASC LIMIT 1"
                 photo = conn.execute(query, (current_photo_id,)).fetchone()
                 # If we're at the end, loop back to the first photo
                 if not photo:
-                    photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY id ASC LIMIT 1").fetchone()
+                    photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY id ASC LIMIT 1").fetchone()
             elif direction == "previous":
-                query = "SELECT id, path, width, height, tags FROM photos WHERE id < ? ORDER BY id DESC LIMIT 1"
+                query = "SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos WHERE id < ? ORDER BY id DESC LIMIT 1"
                 photo = conn.execute(query, (current_photo_id,)).fetchone()
                 # If we're at the beginning, loop back to the last photo
                 if not photo:
-                    photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY id DESC LIMIT 1").fetchone()
+                    photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY id DESC LIMIT 1").fetchone()
             else: # Default to random if direction is invalid
-                photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+                photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
         else:
              # Fetch a random photo from the database
-            photo = conn.execute("SELECT id, path, width, height, tags FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+            photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
 
     except sqlite3.Error as e:
         log.error(f"Database error when fetching photo: {e}")
@@ -167,6 +173,8 @@ async def get_random_photo_details(
         "width": photo['width'],
         "height": photo['height'],
         "tags": photo['tags'],
+        "datetime_taken": photo['datetime_taken'],
+        "geolocation": photo['geolocation'],
         "urls": {"raw": photo_url, "full": photo_url, "regular": photo_url, "small": photo_url, "thumb": photo_url},
         "links": {"self": photo_url, "html": photo_url, "download": photo_url}
     }
@@ -309,12 +317,19 @@ async def read_root():
 async def slideshow(request: Request):
     """Serves the slideshow HTML page."""
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
-    return templates.TemplateResponse("index.html", {"request": request, "api_key": api_key, "tag": None})
+    google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+    return templates.TemplateResponse("index.html", {
+        "request": request, 
+        "api_key": api_key, 
+        "google_maps_api_key": google_maps_api_key,
+        "tag": None
+    })
 
 @app.get("/ui/slideshow/{tag}", response_class=HTMLResponse)
 async def slideshow_by_tag(request: Request, tag: str):
     """Serves the slideshow HTML page filtered by tag."""
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
+    google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     decoded_tag = unquote_plus(tag)
     
     conn = database.get_db_connection()
@@ -330,6 +345,7 @@ async def slideshow_by_tag(request: Request, tag: str):
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "api_key": api_key, 
+        "google_maps_api_key": google_maps_api_key,
         "tag": decoded_tag,
         "tag_photo_count": tag_photo_count
     })
