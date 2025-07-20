@@ -9,6 +9,7 @@ A simple lightweight web photosharing app
 - Modify the indexer to record the time new photos are added to the database by setting thedatetime_added field.
 - Modify the slideshow to display datetime the photo was taken.
 - Modify the slideshow to use javascript to translate geolocation coordingates to an approximate place name if available. Fetch the place name in the background after the photo is displayed. Use the Google Maps API to translate the geolocation to a place name.
+- Use the existing db fields: geolocation, datetime_taken, datetime_added 
 
 ## Completed Tasks
 

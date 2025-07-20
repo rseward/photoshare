@@ -98,7 +98,7 @@ body, html {
     cursor: pointer;
 }
 .hamburger-menu .line {
-    width: 35px;
+    width: 15px; /* 35px */
     height: 5px;
     background-color: white;
     margin: 6px 0;
@@ -111,14 +111,14 @@ body, html {
     right: 15px;
     background-color: var(--overlay-bg-color);
     border-radius: 5px;
-    padding: 10px;
+    padding: 15px;
     z-index: 11;
 }
 .menu a {
     color: white;
     text-decoration: none;
     display: block;
-    padding: 10px;
+    padding: 15px;
 }
 .menu a:hover {
     background-color: var(--button-hover-bg-color);
