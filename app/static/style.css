@@ -73,7 +73,12 @@ body, html {
     font-size: 0.9em;
     margin-right: 60px; /* Move away from hamburger menu */
 }
-#time-display { margin: 0 20px; }
+.metadata-display {
+    margin: 0 15px;
+    font-size: 0.9em;
+    min-width: 150px; /* Reserve some space */
+    text-align: center;
+}
 #prev-button { position: absolute; left: 15px; }
 #next-button { position: absolute; right: 15px; }
 .home-icon {
@@ -90,18 +95,19 @@ body, html {
 }
 .hamburger-menu {
     position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 50px;
+    top: 20px;
+    right: 20px;
+    width: 25px;
     height: 50px;
     z-index: 10;
     cursor: pointer;
 }
+
 .hamburger-menu .line {
-    width: 15px; /* 35px */
-    height: 5px;
+    width: 25px;
+    height: 2px;
     background-color: white;
-    margin: 6px 0;
+    margin: 4px 0;
     transition: 0.4s;
 }
 .menu {

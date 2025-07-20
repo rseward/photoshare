@@ -11,16 +11,17 @@
     <a href="/ui/dashboard" class="home-icon">
         <img src="/static/imgs/home-icon-cropped-392x392.png" alt="Home" style="width: 100%; height: 100%;">
     </a>
-    {% if tag %}
     <div class="hamburger-menu" onclick="toggleMenu()">
         <div class="line"></div>
         <div class="line"></div>
         <div class="line"></div>
     </div>
     <div class="menu" id="menu">
+        <a href="#" onclick="downloadCurrentImage(); return false;">Download Current Photo</a>
+        {% if tag %}
         <a href="/download/tagged/{{ tag }}">Download Tagged Photos</a>
+        {% endif %}
     </div>
-    {% endif %}
     <div id="slideshow-container">
         <div id="top-overlay" class="overlay">
             <button id="delete-button" class="control-button">Delete</button>
@@ -33,8 +34,8 @@
         </div>
         <div id="bottom-overlay" class="overlay">
             <button id="prev-button" class="control-button">Previous</button>
-            <span id="datetime-taken-display"></span>
-            <span id="geolocation-display"></span>
+            <span id="datetime-taken-display" class="metadata-display"></span>
+            <span id="geolocation-display" class="metadata-display"></span>
             <button id="pause-resume-button" class="control-button">Pause</button>
             <button id="next-button" class="control-button">Next</button>
         </div>
@@ -110,6 +111,7 @@
                 currentPhoto = { 
                     id: photoData.id, 
                     imageElement: img,
+                    filename: photoData.filename,
                     datetime_taken: photoData.datetime_taken,
                     geolocation: photoData.geolocation
                 };
@@ -134,7 +136,7 @@
         }
 
         async function updateGeolocation(coords) {
-            if (googleMapsApiKey === "YOUR_GOOGLE_MAPS_API_KEY") {
+            if (!googleMapsApiKey) {
                 console.warn("Google Maps API key is not set. Geolocation lookup is disabled.");
                 geolocationDisplay.textContent = coords; // Show raw coordinates
                 return;
@@ -170,6 +172,16 @@
                 console.error('Delete error:', error);
                 filenameDisplay.textContent = `Error: ${error.message}`;
             }
+        }
+
+        function downloadCurrentImage() {
+            if (!currentPhoto) return;
+            const link = document.createElement('a');
+            link.href = currentPhoto.imageElement.src;
+            link.download = currentPhoto.filename || 'photo.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         async function handleTagSubmit(event) {

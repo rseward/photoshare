@@ -42,16 +42,17 @@ def add_photo_to_index(photo_path: str, width: int, height: int, geolocation: st
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM photos WHERE path = ?", (str(photo_path),))
+        cursor.execute("SELECT id, datetime_taken FROM photos WHERE path = ?", (str(photo_path),))
         row = cursor.fetchone()
         
         if row:
-            # Update existing photo - only update metadata
-            cursor.execute(
-                "UPDATE photos SET geolocation = ?, datetime_taken = ? WHERE id = ?",
-                (geolocation, datetime_taken, row['id'])
-            )
-            logging.info(f"Updated photo metadata: {photo_path}")
+            # Update existing photo only if datetime_taken is not already set.
+            if row['datetime_taken'] is None:
+                cursor.execute(
+                    "UPDATE photos SET geolocation = ?, datetime_taken = ? WHERE id = ?",
+                    (geolocation, datetime_taken, row['id'])
+                )
+                logging.info(f"Updated photo metadata for: {photo_path}")
         else:
             # Insert new photo
             datetime_added = datetime.now(timezone.utc).isoformat()
