@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+import hashlib
 from pathlib import Path
 from . import database
 from PIL import Image
@@ -16,6 +17,18 @@ def _convert_gps_to_decimal(dms, ref):
     if ref in ['S', 'W']:
         decimal = -decimal
     return decimal
+
+def _calculate_md5sum(file_path):
+    """Calculates the MD5 checksum of a file."""
+    hash_md5 = hashlib.md5()
+    try:
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+    except IOError as e:
+        logging.error(f"Could not read file for md5sum: {file_path}: {e}")
+        return None
 
 def _get_exif_data(image_path):
     """Extracts width, height, geolocation, and datetime_taken from image EXIF data."""
@@ -109,8 +122,10 @@ def run_indexing():
                     
                     width, height, geolocation, datetime_taken = _get_exif_data(f)
                     if width is not None:
-                        database.add_photo_to_index(str(f), width, height, geolocation, datetime_taken)
-                        photos_discovered += 1
+                        md5sum = _calculate_md5sum(f)
+                        if md5sum:
+                            database.add_photo_to_index(str(f), width, height, geolocation, datetime_taken, md5sum)
+                            photos_discovered += 1
 
                     if photos_discovered % 100 == 0 and photos_discovered > 0:
                         elapsed_time = time.time() - start_time

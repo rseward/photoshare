@@ -28,7 +28,8 @@ def init_db():
                 geolocation TEXT,
                 datetime_taken TEXT,
                 datetime_added TEXT,
-                tags TEXT
+                tags TEXT,
+                md5sum TEXT
             );
         """)
         conn.commit()
@@ -37,28 +38,28 @@ def init_db():
     finally:
         conn.close()
 
-def add_photo_to_index(photo_path: str, width: int, height: int, geolocation: str | None, datetime_taken: str | None):
+def add_photo_to_index(photo_path: str, width: int, height: int, geolocation: str | None, datetime_taken: str | None, md5sum: str):
     """Adds or updates a photo in the database index."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, datetime_taken FROM photos WHERE path = ?", (str(photo_path),))
+        cursor.execute("SELECT id, md5sum FROM photos WHERE path = ?", (str(photo_path),))
         row = cursor.fetchone()
         
         if row:
-            # Update existing photo only if datetime_taken is not already set.
-            if row['datetime_taken'] is None:
+            # Update existing photo only if md5sum has changed.
+            if row['md5sum'] != md5sum:
                 cursor.execute(
-                    "UPDATE photos SET geolocation = ?, datetime_taken = ? WHERE id = ?",
-                    (geolocation, datetime_taken, row['id'])
+                    "UPDATE photos SET width = ?, height = ?, geolocation = ?, datetime_taken = ?, md5sum = ? WHERE id = ?",
+                    (width, height, geolocation, datetime_taken, md5sum, row['id'])
                 )
                 logging.info(f"Updated photo metadata for: {photo_path}")
         else:
             # Insert new photo
             datetime_added = datetime.now(timezone.utc).isoformat()
             cursor.execute(
-                "INSERT INTO photos (path, width, height, geolocation, datetime_taken, datetime_added) VALUES (?, ?, ?, ?, ?, ?)",
-                (str(photo_path), width, height, geolocation, datetime_taken, datetime_added)
+                "INSERT INTO photos (path, width, height, geolocation, datetime_taken, datetime_added, md5sum) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (str(photo_path), width, height, geolocation, datetime_taken, datetime_added, md5sum)
             )
             logging.info(f"Indexed new photo: {photo_path}")
         
