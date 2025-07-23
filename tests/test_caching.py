@@ -89,7 +89,7 @@ def test_start_background_refresh(mock_update_cache, mock_timer):
 
     # Assert
     mock_update_cache.assert_called_once() # Initial update
-    mock_timer.assert_called_with(1800, caching._background_refresh_task)
+    mock_timer.assert_called_with(300, caching._background_refresh_task)
     mock_timer_instance.start.assert_called_once()
 
 @patch('threading.Timer')
@@ -105,5 +105,5 @@ def test_background_refresh_task(mock_update_cache, mock_timer):
 
     # Assert
     mock_update_cache.assert_called_once()
-    mock_timer.assert_called_with(1800, caching._background_refresh_task)
+    mock_timer.assert_called_with(300, caching._background_refresh_task)
     mock_timer_instance.start.assert_called_once()

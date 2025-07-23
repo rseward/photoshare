@@ -1,10 +1,11 @@
+import random
 import logging
 import os
 import sqlite3
 import threading
+from typing import Optional
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -72,41 +73,12 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 async def favicon():
     return FileResponse(Path(__file__).parent / "static" / "favicon.ico")
 
-from typing import Optional
-
-@app.get("/photos/bytag/{tag}", response_class=JSONResponse)
-async def get_random_photo_by_tag(
-    request: Request,
-    tag: str,
-    authorization: Optional[str] = Header(None)
-):
-    # Simplified, manual authentication check
-    api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
-    if not api_key_env:
-        raise HTTPException(status_code=500, detail="Server not configured for authentication.")
-    
-    if not authorization or authorization != f"Client-ID {api_key_env}":
-        raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
-
-    conn = database.get_db_connection()
-    try:
-        # Fetch a random photo with the specified tag
-        query = "SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos WHERE tags LIKE ? ORDER BY RANDOM() LIMIT 1"
-        tag_pattern = f"%{tag}%"
-        photo = conn.execute(query, (tag_pattern,)).fetchone()
-    except sqlite3.Error as e:
-        log.error(f"Database error when fetching photo by tag {tag}: {e}")
-        raise HTTPException(status_code=500, detail="Database error.")
-    finally:
-        conn.close()
-
+def _get_photo_response(photo: sqlite3.Row, request: Request):
     if not photo:
-        raise HTTPException(status_code=404, detail=f"No photos found with tag: {tag}")
-
+        return None
     base_url = str(request.base_url)
     photo_url = f"{base_url}photos/{photo['id']}"
-
-    response_data = {
+    return {
         "id": photo['id'],
         "filename": Path(photo['path']).name,
         "width": photo['width'],
@@ -117,68 +89,136 @@ async def get_random_photo_by_tag(
         "urls": {"raw": photo_url, "full": photo_url, "regular": photo_url, "small": photo_url, "thumb": photo_url},
         "links": {"self": photo_url, "html": photo_url, "download": photo_url}
     }
-    return JSONResponse(content=response_data)
 
 @app.get("/photos/random", response_class=JSONResponse)
 async def get_random_photo_details(
-    request: Request, 
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    tag: Optional[str] = None
+):
+    # Authentication
+    api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
+    if not api_key_env or not authorization or authorization != f"Client-ID {api_key_env}":
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
+
+    conn = database.get_db_connection()
+    try:
+        query = "SELECT * FROM photos"
+        params = []
+        if tag:
+            query += " WHERE tags LIKE ?"
+            params.append(f"%{tag}%")
+        query += " ORDER BY RANDOM() LIMIT 1"
+        
+        photo = conn.execute(query, tuple(params)).fetchone()
+    except sqlite3.Error as e:
+        log.error(f"Database error in /photos/random: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
+    finally:
+        conn.close()
+
+    if not photo:
+        raise HTTPException(status_code=404, detail="No photos found.")
+    
+    return JSONResponse(content=_get_photo_response(photo, request))
+
+@app.get("/photos/sequence/{sequence_name}", response_class=JSONResponse)
+async def get_photo_sequence(
+    request: Request,
+    sequence_name: str,
     authorization: Optional[str] = Header(None),
     current_photo_id: Optional[int] = None,
     direction: Optional[str] = None
 ):
-    # Simplified, manual authentication check
+    # Authentication
     api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
-    if not api_key_env:
-        raise HTTPException(status_code=500, detail="Server not configured for authentication.")
-    
-    if not authorization or authorization != f"Client-ID {api_key_env}":
+    if not api_key_env or not authorization or authorization != f"Client-ID {api_key_env}":
         raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
+
+    base_query = "SELECT * FROM photos"
+    where_clauses = []
+    params = []
+    
+    # Base filter for the sequence
+    if sequence_name == 'new':
+        where_clauses.append("datetime_added IS NOT NULL AND datetime_added != ''")
+        order_by_main = "ORDER BY datetime_added DESC, id DESC"
+        order_by_rev = "ORDER BY datetime_added ASC, id ASC"
+    elif sequence_name == 'tagged':
+        where_clauses.append("tags IS NOT NULL AND tags != ''")
+        order_by_main = "ORDER BY id ASC"
+        order_by_rev = "ORDER BY id DESC"
+    elif sequence_name == 'untagged':
+        where_clauses.append("tags IS NULL OR tags = ''")
+        order_by_main = "ORDER BY id ASC"
+        order_by_rev = "ORDER BY id DESC"
+    else:
+        raise HTTPException(status_code=404, detail="Unknown sequence name.")
 
     conn = database.get_db_connection()
     try:
-        if direction and current_photo_id is not None:
-            if direction == "next":
-                query = "SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos WHERE id > ? ORDER BY id ASC LIMIT 1"
-                photo = conn.execute(query, (current_photo_id,)).fetchone()
-                # If we're at the end, loop back to the first photo
-                if not photo:
-                    photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY id ASC LIMIT 1").fetchone()
-            elif direction == "previous":
-                query = "SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos WHERE id < ? ORDER BY id DESC LIMIT 1"
-                photo = conn.execute(query, (current_photo_id,)).fetchone()
-                # If we're at the beginning, loop back to the last photo
-                if not photo:
-                    photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY id DESC LIMIT 1").fetchone()
-            else: # Default to random if direction is invalid
-                photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+        if direction and current_photo_id:
+            current_photo = conn.execute("SELECT id, datetime_added FROM photos WHERE id = ?", (current_photo_id,)).fetchone()
+            if not current_photo:
+                raise HTTPException(status_code=404, detail="Current photo not found.")
+
+            if sequence_name == 'new':
+                current_val = current_photo['datetime_added']
+                if direction == 'next':
+                    where_clauses.append("(datetime_added < ? OR (datetime_added = ? AND id < ?))")
+                    params.extend([current_val, current_val, current_photo_id])
+                    order_by = order_by_main
+                else: # previous
+                    where_clauses.append("(datetime_added > ? OR (datetime_added = ? AND id > ?))")
+                    params.extend([current_val, current_val, current_photo_id])
+                    order_by = order_by_rev
+            else: # Navigation by ID for tagged/untagged
+                if direction == 'next':
+                    where_clauses.append("id > ?")
+                    params.append(current_photo_id)
+                    order_by = order_by_main
+                else: # previous
+                    where_clauses.append("id < ?")
+                    params.append(current_photo_id)
+                    order_by = order_by_rev
+            
+            query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
+            photo = conn.execute(query, tuple(params)).fetchone()
+
         else:
-             # Fetch a random photo from the database
-            photo = conn.execute("SELECT id, path, width, height, tags, datetime_taken, geolocation FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+            # Initial load of the sequence
+            if sequence_name == 'new':
+                # Get top 1000 newest photos and pick one at random
+                top_1000_query = f"SELECT id FROM photos WHERE {' AND '.join(where_clauses)} {order_by_main} LIMIT 1000"
+                top_1000_ids = [row['id'] for row in conn.execute(top_1000_query, tuple(params)).fetchall()]
+                if not top_1000_ids:
+                    raise HTTPException(status_code=404, detail="No new photos found.")
+                
+                random_id = random.choice(top_1000_ids)
+                query = f"{base_query} WHERE id = ?"
+                photo = conn.execute(query, (random_id,)).fetchone()
+            else:
+                # Original logic for other sequences
+                order_by = order_by_main
+                query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
+                photo = conn.execute(query, tuple(params)).fetchone()
+
+        # Handle wraparound
+        if not photo and direction:
+            wrap_query = f"{base_query} WHERE {where_clauses[0]} {order_by_main if direction == 'next' else order_by_rev} LIMIT 1"
+            photo = conn.execute(wrap_query, tuple(params[:1])).fetchone()
 
     except sqlite3.Error as e:
-        log.error(f"Database error when fetching photo: {e}")
+        log.error(f"Database error in /photos/sequence: {e}")
         raise HTTPException(status_code=500, detail="Database error.")
     finally:
         conn.close()
 
     if not photo:
-        raise HTTPException(status_code=404, detail="No photos found in the index.")
+        raise HTTPException(status_code=404, detail="No photos found for this sequence.")
 
-    base_url = str(request.base_url)
-    photo_url = f"{base_url}photos/{photo['id']}"
+    return JSONResponse(content=_get_photo_response(photo, request))
 
-    response_data = {
-        "id": photo['id'],
-        "filename": Path(photo['path']).name,
-        "width": photo['width'],
-        "height": photo['height'],
-        "tags": photo['tags'],
-        "datetime_taken": photo['datetime_taken'],
-        "geolocation": photo['geolocation'],
-        "urls": {"raw": photo_url, "full": photo_url, "regular": photo_url, "small": photo_url, "thumb": photo_url},
-        "links": {"self": photo_url, "html": photo_url, "download": photo_url}
-    }
-    return JSONResponse(content=response_data)
 
 @app.get("/photos/{photo_id}")
 async def get_photo_file(photo_id: int):
@@ -205,24 +245,18 @@ async def mark_photo_for_deletion(photo_id: int, authorization: Optional[str] = 
 
     conn = database.get_db_connection()
     try:
-        # First, get the path of the photo to be deleted
         photo = conn.execute("SELECT path FROM photos WHERE id = ?", (photo_id,)).fetchone()
         if not photo:
             raise HTTPException(status_code=404, detail="Photo not found in index.")
         
-        photo_path_to_delete = photo['path']
-
-        # Append the path to the deletion file
         db_dir = Path(database.get_db_path()).parent
         delete_file = db_dir / "photos_to_delete.txt"
         with open(delete_file, "a") as f:
-            f.write(f"{photo_path_to_delete}\n")
-        log.info(f"Marked photo for deletion: {photo_path_to_delete}")
-
-        # Then, remove the photo from the database
+            f.write(f"{photo['path']}\n")
+        
         conn.execute("DELETE FROM photos WHERE id = ?", (photo_id,))
         conn.commit()
-        log.info(f"Removed photo from index: {photo_id}")
+        log.info(f"Marked and removed photo {photo_id}")
 
     except sqlite3.Error as e:
         log.error(f"Database error during photo deletion: {e}")
@@ -270,7 +304,6 @@ async def dashboard(request: Request):
         photo_count = conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
         tagged_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags IS NOT NULL AND tags != ''").fetchone()[0]
         
-        # Select a random photo for the background
         random_photo = conn.execute("SELECT id FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
         background_image_url = f"/photos/{random_photo['id']}" if random_photo else ""
 
@@ -280,14 +313,9 @@ async def dashboard(request: Request):
     finally:
         conn.close()
 
-    # Get tag counts from cache
     tag_counts = caching.get_tag_counts()
-    
-    # Sort tags by count and get the top 30
     sorted_tags = sorted(tag_counts.items(), key=lambda item: item[1], reverse=True)
     top_30_tags = dict(sorted_tags[:30])
-
-    # Normalize tag sizes for the cloud display
     max_count = max(top_30_tags.values()) if top_30_tags else 0
     tag_cloud = [
         {
@@ -315,27 +343,38 @@ async def read_root():
 
 @app.get("/ui/slideshow", response_class=HTMLResponse)
 async def slideshow(request: Request):
-    """Serves the slideshow HTML page."""
+    """Serves the main random slideshow HTML page."""
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
     google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "api_key": api_key, 
         "google_maps_api_key": google_maps_api_key,
+        "slideshow_type": "random",
         "tag": None
     })
 
 @app.get("/ui/slideshow/{tag}", response_class=HTMLResponse)
 async def slideshow_by_tag(request: Request, tag: str):
-    """Serves the slideshow HTML page filtered by tag."""
+    """Serves the slideshow HTML page filtered by tag or special sequence."""
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
     google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     decoded_tag = unquote_plus(tag)
     
+    special_filters = ['new', 'tagged', 'untagged']
+    slideshow_type = "sequence" if decoded_tag in special_filters else "random"
+    
     conn = database.get_db_connection()
     try:
-        tag_pattern = f"%{decoded_tag}%"
-        tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags LIKE ?", (tag_pattern,)).fetchone()[0]
+        if decoded_tag == 'new':
+            tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE datetime_added IS NOT NULL AND datetime_added != ''").fetchone()[0]
+        elif decoded_tag == 'tagged':
+            tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags IS NOT NULL AND tags != ''").fetchone()[0]
+        elif decoded_tag == 'untagged':
+            tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags IS NULL OR tags = ''").fetchone()[0]
+        else:
+            tag_pattern = f"%{decoded_tag}%"
+            tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags LIKE ?", (tag_pattern,)).fetchone()[0]
     except sqlite3.Error as e:
         log.error(f"Database error when counting photos for tag {decoded_tag}: {e}")
         tag_photo_count = 0
@@ -346,8 +385,33 @@ async def slideshow_by_tag(request: Request, tag: str):
         "request": request, 
         "api_key": api_key, 
         "google_maps_api_key": google_maps_api_key,
+        "slideshow_type": slideshow_type,
         "tag": decoded_tag,
         "tag_photo_count": tag_photo_count
+    })
+
+
+@app.get("/ui/tags", response_class=HTMLResponse)
+async def tags_page(request: Request, sort_by: str = 'tag', order: str = 'asc', search: str = ''):
+    """Serves the page that lists all tags."""
+    conn = database.get_db_connection()
+    try:
+        random_photo = conn.execute("SELECT id FROM photos ORDER BY RANDOM() LIMIT 1").fetchone()
+        background_image_url = f"/photos/{random_photo['id']}" if random_photo else ""
+    except sqlite3.Error as e:
+        log.error(f"Database error on tags page: {e}")
+        background_image_url = ""
+    finally:
+        conn.close()
+
+    tags = database.get_all_tags(sort_by=sort_by, order=order, search=search)
+    return templates.TemplateResponse("tags.html", {
+        "request": request,
+        "tags": tags,
+        "sort_by": sort_by,
+        "order": order,
+        "search": search,
+        "background_image_url": background_image_url
     })
 
 

@@ -46,13 +46,13 @@ def update_tag_counts_cache():
     log.info("Tag counts cache updated.")
 
 def start_background_refresh():
-    """Starts a background timer to refresh the tag counts cache every 30 minutes."""
+    """Starts a background timer to refresh the tag counts cache every 5 minutes."""
     log.info("Starting background cache refresh timer.")
     # Initial population
     update_tag_counts_cache()
     
     # Schedule periodic updates
-    timer = threading.Timer(1800, _background_refresh_task)
+    timer = threading.Timer(300, _background_refresh_task)
     timer.daemon = True
     timer.start()
 
@@ -60,6 +60,6 @@ def _background_refresh_task():
     """The task that runs periodically to refresh the cache."""
     update_tag_counts_cache()
     # Reschedule the timer
-    timer = threading.Timer(1800, _background_refresh_task)
+    timer = threading.Timer(300, _background_refresh_task)
     timer.daemon = True
     timer.start()

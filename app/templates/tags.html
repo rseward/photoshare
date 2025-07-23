@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Tags</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+        }
+        #background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(8px) brightness(0.5);
+            transform: scale(1.1);
+            z-index: -1;
+        }
+        .content {
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .search-box {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .search-box input {
+            padding: 10px;
+            width: 50%;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: white;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        th a {
+            text-decoration: none;
+            color: white;
+            display: block;
+            width: 100%;
+        }
+        td a {
+            color: #a0cff2;
+            text-decoration: none;
+        }
+        td a:hover {
+            text-decoration: underline;
+        }
+        .home-icon {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 50px;
+            height: 50px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <a href="/ui/dashboard" class="home-icon">
+        <img src="/static/imgs/home-icon-cropped-392x392.png" alt="Home" style="width: 100%; height: 100%;">
+    </a>
+    <div id="background"></div>
+    <div class="content">
+        <div class="container">
+            <h1>All Tags</h1>
+            <div class="search-box">
+                <form method="get">
+                    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                    <input type="hidden" name="order" value="{{ order }}">
+                    <input type="text" name="search" placeholder="Search for tags..." value="{{ search }}">
+                    <button type="submit">Search</button>
+                </form>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th><a href="?sort_by=tag&order={{ 'desc' if sort_by == 'tag' and order == 'asc' else 'asc' }}&search={{ search }}">Tag</a></th>
+                        <th><a href="?sort_by=count&order={{ 'desc' if sort_by == 'count' and order == 'asc' else 'asc' }}&search={{ search }}">Count</a></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tag in tags %}
+                    <tr>
+                        <td><a href="/ui/slideshow/{{ tag.tag }}">{{ tag.tag }}</a></td>
+                        <td>{{ tag.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        // Set background image
+        const backgroundDiv = document.getElementById('background');
+        backgroundDiv.style.backgroundImage = "url('{{ background_image_url }}')";
+    </script>
+</body>
+</html>

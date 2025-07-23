@@ -23,7 +23,8 @@ def cli():
     pass
 
 @cli.command()
-def index():
+@click.option('--md5sum', '-m', is_flag=True, help='Update md5sum for existing photos.')
+def index(md5sum):
     """
     Scans photo directories and builds the database index.
     Creates a lock file to prevent the web service from starting a duplicate scan.
@@ -42,7 +43,7 @@ def index():
 
         # Initialize DB and run indexing
         database.init_db()
-        indexing.run_indexing()
+        indexing.run_indexing(update_md5sum=md5sum)
 
     finally:
         # Ensure lock file is removed
