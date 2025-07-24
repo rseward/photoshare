@@ -1,88 +1,58 @@
+
+
 import os
 import sys
 import pytest
-from click.testing import CliRunner
+from unittest.mock import patch, MagicMock
 from pathlib import Path
-import shutil
-import sqlite3
 
 # Add project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from indexer import cli
+from app import indexing
 
-@pytest.fixture(scope="session")
-def sample_photos_path():
-    """Returns the absolute path to the sample_photos directory."""
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sample_photos'))
-
-def test_indexer_cli_success(monkeypatch, tmp_path, sample_photos_path):
+@patch('app.database.get_db_connection')
+@patch('app.indexing.Pool') # Mock the Pool class
+def test_indexer_ignores_patterns(mock_pool, mock_get_db, tmp_path, monkeypatch):
     """
-    Tests that the 'indexer.py index' command runs successfully.
+    Tests that the indexer correctly ignores files matching patterns
+    in the specified ignore file.
     """
-    db_path = tmp_path / "test_cli.db"
-    monkeypatch.setenv("PHOTOSHARE_DATABASE_FILE", str(db_path))
-    monkeypatch.setenv("PHOTOSHARE_PHOTO_DIRS", sample_photos_path)
-    monkeypatch.setenv("PHOTOSHARE_PHOTO_IGNORE_PATS", "")
+    # 1. Setup test environment
+    photo_root = tmp_path / "photos"
+    photo_root.mkdir()
 
-    runner = CliRunner()
-    result = runner.invoke(cli, ['index'])
+    good_photo = photo_root / "good_photo.jpg"
+    good_photo.touch()
 
-    assert result.exit_code == 0
-    assert db_path.exists()
-    conn = sqlite3.connect(db_path)
-    count = conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
-    conn.close()
-    assert count == 1
+    thumb_dir = photo_root / ".thumbnails"
+    thumb_dir.mkdir()
+    ignored_photo = thumb_dir / "thumb.jpg"
+    ignored_photo.touch()
 
-def test_indexer_with_ignore_pattern(monkeypatch, tmp_path, sample_photos_path):
-    """
-    Tests that the indexer correctly ignores files based on a pattern.
-    """
-    # Create a new directory for this test to avoid side effects
-    test_photo_dir = tmp_path / "test_photos"
-    shutil.copytree(sample_photos_path, test_photo_dir)
-
-    # Create a new photo in a subdirectory that should be ignored
-    ignored_subdir = test_photo_dir / ".thumbcache"
-    ignored_subdir.mkdir()
-    (ignored_subdir / "ignored_photo.png").touch()
-
-    # Create the ignore file with the problematic pattern
     ignore_file = tmp_path / "ignore.txt"
-    with open(ignore_file, "w") as f:
-        f.write("*/.thumbcache/*\n")
+    ignore_file.write_text("**/.*/**\n")
 
-    db_path = tmp_path / "test_ignore.db"
-    monkeypatch.setenv("PHOTOSHARE_DATABASE_FILE", str(db_path))
-    monkeypatch.setenv("PHOTOSHARE_PHOTO_DIRS", str(test_photo_dir))
+    monkeypatch.setenv("PHOTOSHARE_PHOTO_DIRS", str(photo_root))
     monkeypatch.setenv("PHOTOSHARE_PHOTO_IGNORE_PATS", str(ignore_file))
 
-    runner = CliRunner()
-    result = runner.invoke(cli, ['index'])
-    assert result.exit_code == 0
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value.fetchall.return_value = []
+    mock_get_db.return_value = mock_conn
 
-    # Check that the ignored photo was NOT indexed, but the original one was
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM photos WHERE path LIKE ?", ('%placeholder.png',))
-    assert cursor.fetchone() is not None, "The original photo should be indexed."
-    cursor.execute("SELECT id FROM photos WHERE path LIKE ?", ('%ignored_photo.png',))
-    assert cursor.fetchone() is None, "The ignored photo should NOT be indexed."
-    conn.close()
+    # Mock the instance of the Pool and its imap_unordered method
+    mock_pool_instance = mock_pool.return_value.__enter__.return_value
+    # This simulates that the pool returns no results, we check the jobs sent to it
+    mock_pool_instance.imap_unordered.return_value = []
 
-def test_indexer_cli_lock_file_exists(monkeypatch, tmp_path):
-    """
-    Tests that the indexer aborts if a lock file already exists.
-    """
-    db_path = tmp_path / "test_lock.db"
-    lock_file = tmp_path / "index.lock"
-    lock_file.touch()
+    # 2. Run the indexer
+    indexing.run_indexing()
 
-    monkeypatch.setenv("PHOTOSHARE_DATABASE_FILE", str(db_path))
+    # 3. Assert the results
+    # Get the list of jobs that would have been sent to the pool
+    jobs_sent_to_pool = mock_pool_instance.imap_unordered.call_args[0][1]
+    processed_photos = [job[0] for job in jobs_sent_to_pool]
 
-    runner = CliRunner()
-    result = runner.invoke(cli, ['index'])
-
-    assert result.exit_code == 1
-    assert "Lock file exists" in result.output
+    assert len(processed_photos) == 1, "Should only attempt to process one photo"
+    assert processed_photos[0] == good_photo, "The wrong photo was processed"
+    assert ignored_photo not in processed_photos, "The ignored photo was processed"

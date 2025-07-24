@@ -4,19 +4,17 @@ A simple lightweight web photosharing app
 
 ## Pending Tasks
 
+### photo import features
+
+- Modify the photoimport.py  tool. Have it create two new directories in the specified directory. "new" and "existing".  Recursively descend the specified directory (skipping the new and existing directories). Find all files with a .jpg or .jpeg extension (case insensitive). Process other common image extensions as well. For each file, compute the md5sum of the file. If the md5sum is not found in the database, create a relative softlink to the file in the "new" directory. If the md5sum is found in the database, create a relative softlink to the file in the "existing" directory.
+- Every 15 seconds show the progress of discovering and processing of the files. Total the number of new files found and the number of existing files found. Show the rate of files discovered per second and the rate of files processed per second.
+
 ### indexer features
 
-- Add memoization feature to _calculate_md5sum() function.
-- When indexing photos, use the multiprocessing module to parallelize the indexing process. Use half the number of available CPU cores with a minimum of 1.
-- Only get the photo EXIF information if the datetime_taken field is null for a photo.
-- The main indexing thread that discovers photo paths should update the log every 15 seconds with the number of photos discovered and the rate of files discovered per second.
-- The main indexing thread that updates the database should update the log every 15 seconds with the number of photos processed and the rate of files modified in the database per second.
-
-### new photo slideshoe feature
-
-- seperate the slideshow features into the own seperate end points to make the logic more modular.
-- Revise the new photo end point to query the database for the top 1000 photos ordered by datetime_added descending. Select a random photo from this result and return that photo from the "new" endpoint.
-- Create a new unit test for the new photo end point. Verify when the end point is executed in sequence it does not return the same photo.
+- Do not update or insert photos whose computed square pixels area is less than 10000 square pixels.
+- If a photo's record metadate_extraction_attempts field is null or less than three, then extract the photo's EXIF data and update the database with the datetime_taken and geolocation fields.
+- When eextracting photo EXIF data increment the database metadata_extraction_attempted field along with the datetime_taken and geolocation fields.
+- Add the percentage of files processed to the progress log messages.
 
 ## Completed Tasks
 
@@ -73,3 +71,26 @@ A simple lightweight web photosharing app
 - Improve the tag feature. On the dashboard page add a "View All Tags" button that links to a page that displays a list of all tags in the database. The page that lists the tags will present the tags in a grid with Tag, Count. The grid should provide column header buttons that allow the user to sort the tags by Tag or Count. Clicking the column will sort by that column in ascending order. Clicking the column again will sort by that column in descending order. The page should also provide a search box that allows the user to search for tags by name. The search should be case-insensitive and should use the LIKE operator to match the search string to the tag name.
 - Revise the new tag page. To use a random photo for the background of the page the same as index.html. Also include the same home icon in the top left corner like all the other pages.
 
+### tag entry features
+
+- When the user is entering a tag into the tag textbox, the slideshow should be paused automatically until the user presses enter for the tag or presses the escape key. Pressing enter or escape will resume the slideshow.
+
+
+### indexer features
+
+- Add memoization feature to _calculate_md5sum() function.
+- When indexing photos, use the multiprocessing module to parallelize the indexing process. Use half the number of available CPU cores with a minimum of 1.
+- Only get the photo EXIF information if the datetime_taken field is null for a photo.
+- The main indexing thread that discovers photo paths should update the log every 15 seconds with the number of photos discovered and the rate of files discovered per second.
+- The main indexing thread that updates the database should update the log every 15 seconds with the number of photos processed and the rate of files modified in the database per second.
+- While indexing files in the indexer.py collect stats on the files for which the md5sums were computed and exif information was collected
+- Revise indexing.py progress log messages to estimate the time left to completion in a human readable format. E.g. 1d8h16m17s . Omit time components that are unnecessary in the estimete. E.g. if there is 5 minutes left there is no need to display the day and hour components.
+- ALTER TABLE photos ADD COLUMN metadata_extraction_attempts INTEGER;
+- UPDATE photos SET metadata_extraction_attempts = 4 WHERE datetime_taken IS NOT NULL or geolocation IS NOT NULL;
+
+
+### new photo slideshow feature
+
+- seperate the slideshow features into the own seperate end points to make the logic more modular.
+- Revise the new photo end point to query the database for the top 1000 photos ordered by datetime_added descending. Select a random photo from this result and return that photo from the "new" endpoint.
+- Create a new unit test for the new photo end point. Verify when the end point is executed in sequence it does not return the same photo.

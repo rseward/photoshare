@@ -25,6 +25,7 @@ def init_db():
                 path TEXT NOT NULL UNIQUE,
                 width INTEGER NOT NULL,
                 height INTEGER NOT NULL,
+                metadata_extraction_attempts INTEGER,
                 geolocation TEXT,
                 datetime_taken TEXT,
                 datetime_added TEXT,
@@ -45,6 +46,10 @@ def init_db():
         if 'md5sum' not in columns:
             logging.info("Adding 'md5sum' column to photos table.")
             conn.execute("ALTER TABLE photos ADD COLUMN md5sum TEXT;")
+
+        if 'metadata_extraction_attempts' not in columns:
+            logging.info("Adding 'metadata_extraction_attempts' column to photos table.")
+            conn.execute("ALTER TABLE photos ADD COLUMN metadata_extraction_attempts INTEGER DEFAULT 0;")
 
         conn.commit()
 
@@ -77,7 +82,7 @@ def add_photo_to_index(photo_path: str, md5sum: str, exif_data: dict | None, upd
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, md5sum FROM photos WHERE path = ?", (str(photo_path),))
+        cursor.execute("SELECT id, md5sum, metadata_extraction_attempts FROM photos WHERE path = ?", (str(photo_path),))
         row = cursor.fetchone()
         
         if row:
@@ -86,8 +91,9 @@ def add_photo_to_index(photo_path: str, md5sum: str, exif_data: dict | None, upd
             update_params = []
             
             if exif_data:
-                update_clauses.extend(["width = ?", "height = ?", "geolocation = ?", "datetime_taken = ?"])
-                update_params.extend([exif_data['width'], exif_data['height'], exif_data['geolocation'], exif_data['datetime_taken']])
+                new_attempts = (row['metadata_extraction_attempts'] or 0) + 1
+                update_clauses.extend(["width = ?", "height = ?", "geolocation = ?", "datetime_taken = ?", "metadata_extraction_attempts = ?"])
+                update_params.extend([exif_data['width'], exif_data['height'], exif_data['geolocation'], exif_data['datetime_taken'], new_attempts])
             
             if update_md5sum and row['md5sum'] != md5sum:
                 update_clauses.append("md5sum = ?")
@@ -107,8 +113,8 @@ def add_photo_to_index(photo_path: str, md5sum: str, exif_data: dict | None, upd
 
             datetime_added = datetime.now(timezone.utc).isoformat()
             cursor.execute(
-                "INSERT INTO photos (path, width, height, geolocation, datetime_taken, datetime_added, md5sum) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (str(photo_path), exif_data['width'], exif_data['height'], exif_data['geolocation'], exif_data['datetime_taken'], datetime_added, md5sum)
+                "INSERT INTO photos (path, width, height, geolocation, datetime_taken, datetime_added, md5sum, metadata_extraction_attempts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (str(photo_path), exif_data['width'], exif_data['height'], exif_data['geolocation'], exif_data['datetime_taken'], datetime_added, md5sum, 1)
             )
             logging.info(f"Indexed new photo: {photo_path}")
         

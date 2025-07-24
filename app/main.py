@@ -90,6 +90,39 @@ def _get_photo_response(photo: sqlite3.Row, request: Request):
         "links": {"self": photo_url, "html": photo_url, "download": photo_url}
     }
 
+@app.get("/photos/untagged", response_class=JSONResponse)
+async def get_untagged_photos(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    limit: int = 20
+):
+    # Authentication
+    api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
+    if not api_key_env or not authorization or authorization != f"Client-ID {api_key_env}":
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
+
+    conn = database.get_db_connection()
+    try:
+        query = "SELECT * FROM photos WHERE tags IS NULL OR tags = '' ORDER BY RANDOM() LIMIT ?"
+        
+        photos_cursor = conn.execute(query, (limit,))
+        photos = photos_cursor.fetchall()
+
+    except sqlite3.Error as e:
+        log.error(f"Database error in /photos/untagged: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
+    finally:
+        conn.close()
+
+    if not photos:
+        return JSONResponse(content={"photos": []})
+    
+    # Process photos to include full URLs
+    photo_responses = [_get_photo_response(photo, request) for photo in photos]
+
+    return JSONResponse(content={"photos": photo_responses})
+
+
 @app.get("/photos/random", response_class=JSONResponse)
 async def get_random_photo_details(
     request: Request,
@@ -205,8 +238,9 @@ async def get_photo_sequence(
 
         # Handle wraparound
         if not photo and direction:
+            # The base query for a sequence never has parameters
             wrap_query = f"{base_query} WHERE {where_clauses[0]} {order_by_main if direction == 'next' else order_by_rev} LIMIT 1"
-            photo = conn.execute(wrap_query, tuple(params[:1])).fetchone()
+            photo = conn.execute(wrap_query).fetchone()
 
     except sqlite3.Error as e:
         log.error(f"Database error in /photos/sequence: {e}")

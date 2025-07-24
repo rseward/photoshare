@@ -1,0 +1,4 @@
+
+-- Summarize by year
+select substr(datetime_taken, 1, 4), count(1) from photos where datetime_taken is not null group by substr(datetime_taken, 1, 4);
+

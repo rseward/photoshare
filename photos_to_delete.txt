@@ -165,3 +165,5 @@
 /cifs/legolas2/family/Pictures/DaddyCam/Google Photos/Photos from 2019/Screenshot_20191201-003410_Bixby Voice.jpg
 /cifs/legolas2/family/Pictures/GrandmaNancy/2012/12/03/9A11AE8E4B2A8B82D4D650B78E8C85[1].jpg
 /cifs/legolas2/family/Pictures/MommyCam/lg-g3/.thumbnails/1430599671277.jpg
+/cifs/legolas2/family/Pictures/MommyCam/lg-g3/.thumbnails/1430142132634.jpg
+/cifs/legolas2/family/Pictures/DaddyCam/dl1010q-photos/.thumbnails/1441431301114.jpg

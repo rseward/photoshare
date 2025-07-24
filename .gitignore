@@ -14,3 +14,4 @@ index.lock
 
 # Environment variables
 .env
+photos_to_delete.txt

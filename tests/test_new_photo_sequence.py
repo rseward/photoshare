@@ -24,9 +24,26 @@ def client_for_new_sequence(monkeypatch, tmp_path):
     monkeypatch.setenv("PHOTOSHARE_DATABASE_FILE", str(db_path))
     monkeypatch.setenv("PHOTOSHARE_API_KEY", api_key)
     
+    # Create a dummy ignore file
+    ignore_file = tmp_path / "ignore.txt"
+    ignore_file.touch()
+    monkeypatch.setenv("PHOTOSHARE_PHOTO_IGNORE_PATS", str(ignore_file))
+    
     # Manually create and populate the database
     conn = sqlite3.connect(db_path)
-    database.init_db() # Ensures schema is created
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT NOT NULL UNIQUE,
+            width INTEGER NOT NULL,
+            height INTEGER NOT NULL,
+            geolocation TEXT,
+            datetime_taken TEXT,
+            datetime_added TEXT,
+            tags TEXT,
+            md5sum TEXT
+        );
+    """)
 
     # Insert test data with controlled timestamps
     now = datetime.now(timezone.utc)
@@ -46,7 +63,7 @@ def client_for_new_sequence(monkeypatch, tmp_path):
     # Reload modules to use the patched environment
     importlib.reload(database)
     importlib.reload(main)
-    
+
     with TestClient(main.app) as client:
         yield client, api_key
 
