@@ -6,15 +6,9 @@ A simple lightweight web photosharing app
 
 ### photo import features
 
-- Modify the photoimport.py  tool. Have it create two new directories in the specified directory. "new" and "existing".  Recursively descend the specified directory (skipping the new and existing directories). Find all files with a .jpg or .jpeg extension (case insensitive). Process other common image extensions as well. For each file, compute the md5sum of the file. If the md5sum is not found in the database, create a relative softlink to the file in the "new" directory. If the md5sum is found in the database, create a relative softlink to the file in the "existing" directory.
-- Every 15 seconds show the progress of discovering and processing of the files. Total the number of new files found and the number of existing files found. Show the rate of files discovered per second and the rate of files processed per second.
 
 ### indexer features
 
-- Do not update or insert photos whose computed square pixels area is less than 10000 square pixels.
-- If a photo's record metadate_extraction_attempts field is null or less than three, then extract the photo's EXIF data and update the database with the datetime_taken and geolocation fields.
-- When eextracting photo EXIF data increment the database metadata_extraction_attempted field along with the datetime_taken and geolocation fields.
-- Add the percentage of files processed to the progress log messages.
 
 ## Completed Tasks
 
@@ -59,6 +53,8 @@ A simple lightweight web photosharing app
 - Create a related CLI importphotos.py tool for use in importing photos from a specified path into the database. The tool will sort the incoming photos into two subdirectories within the specified path:
   1) new - for photos that have not been imported into the database based on md5sum of the file
   2) existing - for photos that have already been imported into the database based on md5sum of the file
+- Modify the photoimport.py  tool. Have it create two new directories in the specified directory. "new" and "existing".  Recursively descend the specified directory (skipping the new and existing directories). Find all files with a .jpg or .jpeg extension (case insensitive). Process other common image extensions as well. For each file, compute the md5sum of the file. If the md5sum is not found in the database, create a relative softlink to the file in the "new" directory. If the md5sum is found in the database, create a relative softlink to the file in the "existing" directory.
+- Every 15 seconds show the progress of discovering and processing of the files. Total the number of new files found and the number of existing files found. Show the rate of files discovered per second and the rate of files processed per second.
 
 ### md5sum feature
 
@@ -87,6 +83,11 @@ A simple lightweight web photosharing app
 - Revise indexing.py progress log messages to estimate the time left to completion in a human readable format. E.g. 1d8h16m17s . Omit time components that are unnecessary in the estimete. E.g. if there is 5 minutes left there is no need to display the day and hour components.
 - ALTER TABLE photos ADD COLUMN metadata_extraction_attempts INTEGER;
 - UPDATE photos SET metadata_extraction_attempts = 4 WHERE datetime_taken IS NOT NULL or geolocation IS NOT NULL;
+- Do not update or insert photos whose computed square pixels area is less than 10000 square pixels.
+- If a photo's record metadate_extraction_attempts field is null or less than three, then extract the photo's EXIF data and update the database with the datetime_taken and geolocation fields.
+- When eextracting photo EXIF data increment the database metadata_extraction_attempted field along with the datetime_taken and geolocation fields.
+- Add the percentage of files processed to the progress log messages.
+- Modify indexer.py to have an "--folder" option that allows the user to specify a folder to index. If the folder is not specified, index the entire PHOTOSHARE_PHOTO_DIR folder.
 
 
 ### new photo slideshow feature

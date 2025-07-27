@@ -24,7 +24,8 @@ def cli():
 
 @cli.command()
 @click.option('--md5sum', '-m', is_flag=True, help='Update md5sum for existing photos.')
-def index(md5sum):
+@click.option('--folder', '-f', type=click.Path(exists=True, file_okay=False, resolve_path=True), help='Only index a specific folder.')
+def index(md5sum, folder):
     """
     Scans photo directories and builds the database index.
     Creates a lock file to prevent the web service from starting a duplicate scan.
@@ -43,7 +44,7 @@ def index(md5sum):
 
         # Initialize DB and run indexing
         database.init_db()
-        indexing.run_indexing(update_md5sum=md5sum)
+        indexing.run_indexing(update_md5sum=md5sum, folder=folder)
 
     finally:
         # Ensure lock file is removed

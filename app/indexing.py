@@ -124,7 +124,7 @@ def _process_photo(photo_path, needs_exif):
         return (str(photo_path), md5sum, exif_data, True, exif_collected)
     return None
 
-def run_indexing(update_md5sum: bool = False):
+def run_indexing(update_md5sum: bool = False, folder: str = None):
     """
     Scans photo directories in parallel, respects ignore patterns, and logs progress
     while adding photos to the database.
@@ -133,12 +133,14 @@ def run_indexing(update_md5sum: bool = False):
     logging.info("Photo indexing process started.")
     
     # 1. Validate configuration
-    photo_dirs_str = os.environ.get("PHOTOSHARE_PHOTO_DIRS", "")
-    if not photo_dirs_str:
-        logging.critical("CRITICAL: PHOTOSHARE_PHOTO_DIRS environment variable is not set. Terminating.")
-        return
-    
-    photo_dirs = photo_dirs_str.split(',')
+    if folder:
+        photo_dirs = [folder]
+    else:
+        photo_dirs_str = os.environ.get("PHOTOSHARE_PHOTO_DIRS", "")
+        if not photo_dirs_str:
+            logging.critical("CRITICAL: PHOTOSHARE_PHOTO_DIRS environment variable is not set. Terminating.")
+            return
+        photo_dirs = photo_dirs_str.split(',')
     
     ignore_file = os.environ.get("PHOTOSHARE_PHOTO_IGNORE_PATS")
     if ignore_file and not os.path.exists(ignore_file):
