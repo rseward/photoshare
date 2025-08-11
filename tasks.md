@@ -9,6 +9,14 @@ A simple lightweight web photosharing app
 
 ### indexer features
 
+### delete reviewer
+
+- Write a python script called delete_photos.py. The script will review the photos_to_delete.txt file. The script will use opencv's higui to display the photos to delete.
+  Text will be overlayed to say "Press d to delete os s to skip. 23 / 170 photos reviewed". If the user presses "s", the photo will be skipped and the next photo from the list will be shown.
+  If the user presses "d", the file will be moved to the /tmp/ directory. The file will be removed from the deletion list. The photos deletion_date field will be
+  set to the current date in the database. After the last photo has been reviewed the remaining photos (those that were skipped) will be written to the photos_to_delete.txt
+  file.
+
 
 ## Completed Tasks
 
