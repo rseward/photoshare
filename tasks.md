@@ -4,16 +4,28 @@ A simple lightweight web photosharing app
 
 ## Pending Tasks
 
+### database features
+
+- Add a "datetime_deleted" field in the database to record when a photo is permanently deleted from the photoshare.
+  The default value is null, and is populated with a ISO date time string when the file corresponding to the
+  file is deleted with the delete_photos.py script.
+
 ### photo import features
 
+- Modify indexer.py. When a file is discovered with a duplicate md5sum in the database, check to see if the path name
+  is different from the database record.
+  - If the path name is different, update the database record with the new path location. Preserve all other fields
+  from the record as/is including tags. An identical md5sum with different paths indicates the files was moved between
+  photo indexe scans.
 
 ### indexer features
 
 ### delete reviewer
 
 - Write a python script called delete_photos.py. The script will review the photos_to_delete.txt file. The script will use opencv's higui to display the photos to delete.
-  Text will be overlayed to say "Press d to delete os s to skip. 23 / 170 photos reviewed". If the user presses "s", the photo will be skipped and the next photo from the list will be shown.
-  If the user presses "d", the file will be moved to the /tmp/ directory. The file will be removed from the deletion list. The photos deletion_date field will be
+  Text will be overlayed at the bottom to say "Press d to delete os s to skip. 23 / 170 photos reviewed". If the user presses "s", the photo will be skipped and the next photo from the list will be shown.
+  Any tag text and EX/IF information for the photo will be displayed at the top of the image.
+  If the user presses "d", the file will be moved to the /tmp/ directory. The file will be removed from the deletion list. The photos datetime_deleted field will be
   set to the current date in the database. After the last photo has been reviewed the remaining photos (those that were skipped) will be written to the photos_to_delete.txt
   file.
 

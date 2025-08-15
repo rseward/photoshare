@@ -1,0 +1,25 @@
+==============================================================================
+Mon Aug 11 02:26:35 PM EDT 2025
+==============================================================================
+
+Prepping for the photo re-org (to make it more Apple import friendly).
+
+Working on a feature to identify files that have been moved from the re-org.
+
+Need a sample_files.py utility to sample X files from a directory structure.
+  - E.g.: sample_files.py srcdir dstdir -n 300
+  - Preserve the directory structure of the sampled files.
+  - Sample X files at random from the root directory.
+  - Provide a summary of the number of files sampled.
+
+Once I have a sampling of such files.
+  - Create a photoshare of the files.
+  - Tag some files.
+  - Re-org the photos using the photo-organizer script
+  - Re-index the photos to test md5sum index preservation feature.
+
+
+
+
+
+
