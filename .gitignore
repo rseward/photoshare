@@ -1,17 +1,1 @@
-# Python
-__pycache__/
-*.pyc
-.pytest_cache/
-
-# Virtual Environments
-.venv/
-myenv
-
-# Application Files
-photoshare.db
-photoshare.log
-index.lock
-
-# Environment variables
-.env
 photos_to_delete.txt
