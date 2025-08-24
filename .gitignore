@@ -1,1 +1,10 @@
 photos_to_delete.txt
+__pycache__/
+photoshare.db
+*.png
+*.jpg
+.env
+myenv/
+ignore.txt
+*.pyc
+.DS_Store
