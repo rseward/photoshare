@@ -50,6 +50,18 @@ The web service will expose an API compatible with the unsplash API and provide 
 - The slide show interface shall provide a delete button to mark a photo for deletion. The button will appear on the left edge of the file name bar at the top of the photo. When pressed the button will call a backend endpoint, /photo/delete/{photo_id} to append the full path of the photo identified by the ID to a file named photos_to_delete.txt in the same directory as the database.
 - The slide show interface shall provide a tag input box that will allow the user to tag the photo with arbitary text in the database. Create a new tag field in the database and add the tag to the photo in the database. Pressing enter in the field will send the tag to the backend endpoint, /photo/tag/{photo_id}. The tag input field will appear on the right hand side of the file name bar at the top of the photo. The field will accomodate at least 30 characters.
 
+## copytags
+
+- Implemented a python CLI utility to copy tags from one photo database to another.
+- Used the click library to create a CLI utility.
+- The utility takes two arguments, the source database and the destination database.
+- The utility copies all tags from the source database to the destination database for photos that have the same md5sum.
+- Wrote a permanent unittest to test the copytags feature.
+- Verified that the copytags features works by running and resolving the unittest failures.
+
+
+
+
 ## Future Enhancements
 
 - To be defined

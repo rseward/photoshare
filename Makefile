@@ -1,3 +1,6 @@
+venv:
+	uv venv --system-site-packages
+
 build:
 	uv pip install -r requirements.txt
 	#uv pip install -e .
@@ -16,6 +19,10 @@ test:
 
 query:
 	sqlite3 photoshare.db
+
+lint:
+	ruff check
+	#ruff check --fix
 
 
 

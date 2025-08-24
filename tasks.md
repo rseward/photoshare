@@ -10,23 +10,32 @@ A simple lightweight web photosharing app
   The default value is null, and is populated with a ISO date time string when the file corresponding to the
   file is deleted with the delete_photos.py script.
 
+
+### photo slideshow features
+
+- Add two rotation buttons to the slideshow. One to rotate the photo clockwise and one to rotate the photo counter clockwise.
+- Pressing the rotate button will rotate the photo 90 degrees clockwise or counter clockwise. The new md5sum of the photo will be computed and the database record will be updated for the photo.
+- The rotation buttons will be hidden by default. They will only be shown when the user hovers over the photo.
+
 ### photo import features
 
 - Modify indexer.py. When a file is discovered with a duplicate md5sum in the database, check to see if the path name
-  is different from the database record.
-  - If the path name is different, update the database record with the new path location. Preserve all other fields
-  from the record as/is including tags. An identical md5sum with different paths indicates the files was moved between
+  is different from the path recorded in the database record. When such a file is discovered, update it's path in the 
+  database record. Leave all other information in the record as is. An identical md5sum with different paths indicates the files was moved between
   photo indexe scans.
 
 ### indexer features
 
+### photo deletion features
+
+- Please fix this problem with marking a photo for deletion in the slideshow. Advance to the next photo in the slideshow, before marking the photo selected by the user.
+
 ### delete reviewer
 
-- Write a python script called delete_photos.py. The script will review the photos_to_delete.txt file. The script will use opencv's higui to display the photos to delete.
-  Text will be overlayed at the bottom to say "Press d to delete os s to skip. 23 / 170 photos reviewed". If the user presses "s", the photo will be skipped and the next photo from the list will be shown.
+- Write a python script called delete_photos.py. The script will review the photos_to_delete.txt file. The script will use opencv's highgui to display the photos to delete.
+  Text will be overlayed at the bottom to say "Press d to delete or s to skip. 23 / 170 photos reviewed". If the user presses "s", the photo will be skipped and the next photo from the list will be shown.
   Any tag text and EX/IF information for the photo will be displayed at the top of the image.
-  If the user presses "d", the file will be moved to the /tmp/ directory. The file will be removed from the deletion list. The photos datetime_deleted field will be
-  set to the current date in the database. After the last photo has been reviewed the remaining photos (those that were skipped) will be written to the photos_to_delete.txt
+  If the user presses "d", the file will be moved to the /tmp/ directory. The file will be removed from the deletion list. The photo's datetime_deleted field will be set to the current date in the database. After the last photo has been reviewed the remaining photos (those that were skipped) will be written to the photos_to_delete.txt
   file.
 
 

@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from urllib.parse import quote_plus, unquote_plus
 
-from . import caching, database, indexing, zipdownload
+from . import caching, database, indexing, zipdownload, image_processing
 
 # Load environment variables from .env file
 load_dotenv()
@@ -214,6 +214,8 @@ async def get_photo_sequence(
                     where_clauses.append("id < ?")
                     params.append(current_photo_id)
                     order_by = order_by_rev
+
+            where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
             
             query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
             photo = conn.execute(query, tuple(params)).fetchone()
@@ -328,6 +330,47 @@ async def tag_photo(photo_id: int, request: Request, authorization: Optional[str
         conn.close()
 
     return {}
+
+
+@app.post("/photo/rotate/{photo_id}", response_class=JSONResponse)
+async def rotate_photo(photo_id: int, request: Request, authorization: Optional[str] = Header(None)):
+    # Authentication
+    api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
+    if not api_key_env or not authorization or authorization != f"Client-ID {api_key_env}":
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
+
+    try:
+        data = await request.json()
+        direction = data.get("direction")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request body.")
+
+    if direction not in ['cw', 'ccw']:
+        raise HTTPException(status_code=400, detail="Invalid rotation direction.")
+
+    conn = database.get_db_connection()
+    try:
+        photo = conn.execute("SELECT * FROM photos WHERE id = ?", (photo_id,)).fetchone()
+        if not photo:
+            raise HTTPException(status_code=404, detail="Photo not found.")
+
+        new_md5sum = image_processing.rotate_image(photo['path'], direction)
+
+        if new_md5sum:
+            conn.execute("UPDATE photos SET md5sum = ? WHERE id = ?", (new_md5sum, photo_id))
+            conn.commit()
+            log.info(f"Rotated photo {photo_id} ({direction}) and updated md5sum.")
+            # Re-fetch the photo to get the updated data
+            updated_photo = conn.execute("SELECT * FROM photos WHERE id = ?", (photo_id,)).fetchone()
+            return JSONResponse(content=_get_photo_response(updated_photo, request))
+        else:
+            raise HTTPException(status_code=500, detail="Failed to rotate image.")
+
+    except sqlite3.Error as e:
+        log.error(f"Database error during photo rotation: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
+    finally:
+        conn.close()
 
 
 @app.get("/ui/dashboard", response_class=HTMLResponse)

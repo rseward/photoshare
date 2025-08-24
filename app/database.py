@@ -3,20 +3,22 @@ import logging
 import os
 from datetime import datetime, timezone
 
-def get_db_path():
+def get_db_path(db_path: str = None):
     """Gets the database file path from the environment variable."""
+    if db_path:
+        return db_path
     return os.environ.get("PHOTOSHARE_DATABASE_FILE", "photoshare.db")
 
-def get_db_connection():
+def get_db_connection(db_path: str = None):
     """Creates a connection to the SQLite database."""
-    conn = sqlite3.connect(get_db_path())
+    conn = sqlite3.connect(get_db_path(db_path))
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
+def init_db(db_path: str = None):
     """Initializes the database and handles schema migrations."""
-    logging.info(f"Initializing database at {get_db_path()}")
-    conn = get_db_connection()
+    logging.info(f"Initializing database at {get_db_path(db_path)}")
+    conn = get_db_connection(db_path)
     try:
         # Create table if it doesn't exist
         conn.execute("""
@@ -31,6 +33,21 @@ def init_db():
                 datetime_added TEXT,
                 tags TEXT,
                 md5sum TEXT
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tag TEXT NOT NULL UNIQUE
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS photo_tags (
+                photo_id INTEGER NOT NULL,
+                tag_id INTEGER NOT NULL,
+                PRIMARY KEY (photo_id, tag_id),
+                FOREIGN KEY (photo_id) REFERENCES photos (id),
+                FOREIGN KEY (tag_id) REFERENCES tags (id)
             );
         """)
 
@@ -50,6 +67,10 @@ def init_db():
         if 'metadata_extraction_attempts' not in columns:
             logging.info("Adding 'metadata_extraction_attempts' column to photos table.")
             conn.execute("ALTER TABLE photos ADD COLUMN metadata_extraction_attempts INTEGER DEFAULT 0;")
+        
+        if 'datetime_deleted' not in columns:
+            logging.info("Adding 'datetime_deleted' column to photos table.")
+            conn.execute("ALTER TABLE photos ADD COLUMN datetime_deleted TEXT;")
 
         conn.commit()
 
@@ -162,5 +183,18 @@ def get_all_tags(sort_by: str = 'tag', order: str = 'asc', search: str = ''):
     except sqlite3.Error as e:
         logging.error(f"Database error when getting all tags: {e}")
         return []
+    finally:
+        conn.close()
+
+def update_photo_path(md5sum: str, new_path: str):
+    """Updates the path of a photo with a given md5sum."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE photos SET path = ? WHERE md5sum = ?", (new_path, md5sum))
+        conn.commit()
+        logging.info(f"Updated path for photo with md5sum {md5sum} to {new_path}")
+    except sqlite3.Error as e:
+        logging.error(f"Database error when updating photo path: {e}")
     finally:
         conn.close()

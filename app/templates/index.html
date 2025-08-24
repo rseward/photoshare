@@ -33,11 +33,19 @@
             <input type="text" id="tag-input" placeholder="Enter tags...">
         </div>
         <div id="bottom-overlay" class="overlay">
-            <button id="prev-button" class="control-button">Previous</button>
-            <span id="datetime-taken-display" class="metadata-display"></span>
-            <span id="geolocation-display" class="metadata-display"></span>
-            <button id="pause-resume-button" class="control-button">Pause</button>
-            <button id="next-button" class="control-button">Next</button>
+            <div class="left-controls">
+                <button id="prev-button" class="control-button">Previous</button>
+                <button id="rotate-cw-button" class="control-button rotate-button">↻</button>
+            </div>
+            <div class="center-controls">
+                <span id="datetime-taken-display" class="metadata-display"></span>
+                <span id="geolocation-display" class="metadata-display"></span>
+                <button id="pause-resume-button" class="control-button">Pause</button>
+            </div>
+            <div class="right-controls">
+                <button id="rotate-ccw-button" class="control-button rotate-button">↺</button>
+                <button id="next-button" class="control-button">Next</button>
+            </div>
         </div>
     </div>
 
@@ -56,6 +64,8 @@
         const prevButton = document.getElementById('prev-button');
         const deleteButton = document.getElementById('delete-button');
         const tagInput = document.getElementById('tag-input');
+        const rotateCwButton = document.getElementById('rotate-cw-button');
+        const rotateCcwButton = document.getElementById('rotate-ccw-button');
 
         let currentPhoto = null;
         let slideshowInterval;
@@ -112,9 +122,13 @@
             }
         }
 
-        function displayPhoto(photoData) {
+        function displayPhoto(photoData, forceReload = false) {
             const img = new Image();
-            img.src = photoData.urls.raw;
+            let imageUrl = photoData.urls.raw;
+            if (forceReload) {
+                imageUrl += `?t=${new Date().getTime()}`;
+            }
+            img.src = imageUrl;
             img.onload = () => {
                 const oldImage = slideshowContainer.querySelector('img');
                 if (oldImage) {
@@ -271,10 +285,36 @@
         tagInput.addEventListener('focus', handleTagInteraction);
         tagInput.addEventListener('blur', handleTagInteraction);
         tagInput.addEventListener('keydown', handleTagInteraction);
+        rotateCwButton.addEventListener('click', () => rotatePhoto('cw'));
+        rotateCcwButton.addEventListener('click', () => rotatePhoto('ccw'));
 
         // Initial Load
         fetchAndDisplayPhoto();
         slideshowInterval = setInterval(() => fetchAndDisplayPhoto('next'), 30000);
+
+        async function rotatePhoto(direction) {
+            if (!currentPhoto) return;
+            if (!isPaused) {
+                togglePauseResume();
+            }
+            try {
+                const response = await fetch(`/photo/rotate/${currentPhoto.id}`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Authorization': `Client-ID ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ direction: direction })
+                });
+                if (!response.ok) throw new Error((await response.json()).detail || "Failed to rotate photo");
+                const photoData = await response.json();
+                displayPhoto(photoData, true); // Force reload
+            } catch (error) {
+                console.error('Rotate error:', error);
+                filenameDisplay.textContent = `Error: ${error.message}`;
+            }
+        }
     </script>
 </body>
 </html>

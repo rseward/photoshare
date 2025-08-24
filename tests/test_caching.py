@@ -1,11 +1,10 @@
 import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app import caching
 import sqlite3
-import threading
 
 @pytest.fixture(autouse=True)
 def reset_cache():

@@ -2,6 +2,8 @@
 
 import click
 import os
+import sys
+
 import logging
 import hashlib
 from pathlib import Path
@@ -12,9 +14,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Set up imports for the application modules
-import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'app')))
-from app import database
+from app import database # noqa
 
 # Configure logging to print to console
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')

@@ -30,7 +30,29 @@ body, html {
     justify-content: flex-start; /* Align items to the start */
     padding-left: 75px; /* Add padding to avoid overlap with home icon */
 }
-#bottom-overlay { bottom: 0; }
+#bottom-overlay { 
+    bottom: 0;
+    justify-content: space-between;
+}
+
+.left-controls, .center-controls, .right-controls {
+    display: flex;
+    align-items: center;
+}
+
+.left-controls {
+    justify-content: flex-start;
+}
+
+.center-controls {
+    justify-content: center;
+    flex-grow: 1;
+}
+
+.right-controls {
+    justify-content: flex-end;
+}
+
 .tags-display {
     background-color: var(--overlay-bg-color);
     padding: 8px 15px;
@@ -79,8 +101,8 @@ body, html {
     min-width: 150px; /* Reserve some space */
     text-align: center;
 }
-#prev-button { position: absolute; left: 15px; }
-#next-button { position: absolute; right: 15px; }
+#prev-button { margin-left: 15px; }
+#next-button { margin-right: 15px; }
 .home-icon {
     position: absolute;
     top: 15px;
@@ -128,4 +150,12 @@ body, html {
 }
 .menu a:hover {
     background-color: var(--button-hover-bg-color);
+}
+
+
+
+.rotate-button {
+    font-size: 2em;
+    padding: 10px;
+    margin: 0 20px;
 }

@@ -1,5 +1,4 @@
 import os
-import sys
 import logging
 import time
 import hashlib
@@ -151,6 +150,7 @@ def run_indexing(update_md5sum: bool = False, folder: str = None):
     conn = database.get_db_connection()
     try:
         photos_in_db = {row['path']: row for row in conn.execute("SELECT path, datetime_taken, metadata_extraction_attempts FROM photos")}
+        md5sums_in_db = {row['md5sum']: row['path'] for row in conn.execute("SELECT md5sum, path FROM photos WHERE md5sum IS NOT NULL")}
     finally:
         conn.close()
 
@@ -222,7 +222,11 @@ def run_indexing(update_md5sum: bool = False, folder: str = None):
                 if exif_success:
                     exif_data_collected += 1
 
-                database.add_photo_to_index(photo_path, md5sum, exif_data, update_md5sum=update_md5sum)
+                if md5sum in md5sums_in_db:
+                    if md5sums_in_db[md5sum] != photo_path:
+                        database.update_photo_path(md5sum, photo_path)
+                else:
+                    database.add_photo_to_index(photo_path, md5sum, exif_data, update_md5sum=update_md5sum)
                 photos_processed += 1
 
                 current_time = time.time()
