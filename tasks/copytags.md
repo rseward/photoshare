@@ -10,7 +10,7 @@
 - Write a permanent unittest to test the copytags feature.
 - Verify that the copytags features works by running and resolving the unittest failures.
 - As tasks are completed, update the PLAN.md file with the completed tasks in the copytags section of PLANS.md.
-- Iterate over the smallest database. Match photo records based on md5sum. Copy tags from the source database to the destination database. Use the tqdm library to show a progress bar.
+- Modify copytags.py toIterate over the smallest database. Match photo records based on md5sum. Copy tags from the source database to the destination database. Use the tqdm library to show a progress bar.
 
 
 
