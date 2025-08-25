@@ -35,21 +35,6 @@ def init_db(db_path: str = None):
                 md5sum TEXT
             );
         """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tag TEXT NOT NULL UNIQUE
-            );
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS photo_tags (
-                photo_id INTEGER NOT NULL,
-                tag_id INTEGER NOT NULL,
-                PRIMARY KEY (photo_id, tag_id),
-                FOREIGN KEY (photo_id) REFERENCES photos (id),
-                FOREIGN KEY (tag_id) REFERENCES tags (id)
-            );
-        """)
 
         # Check for and add missing columns (simple migration)
         cursor = conn.cursor()

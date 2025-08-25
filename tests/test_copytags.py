@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import sys
 import sqlite3
@@ -22,12 +24,12 @@ class TestCopyTags(unittest.TestCase):
         self.source_conn = sqlite3.connect(self.source_db)
         init_db(self.source_db)
         self.source_cursor = self.source_conn.cursor()
-        self.source_cursor.execute("INSERT INTO photos (md5sum, path, width, height) VALUES (?, ?, ?, ?)", ('md5_1', 'path/to/photo1', 0, 0))
-        self.source_cursor.execute("INSERT INTO photos (md5sum, path, width, height) VALUES (?, ?, ?, ?)", ('md5_2', 'path/to/photo2', 0, 0))
-        self.source_cursor.execute("INSERT INTO tags (tag) VALUES (?)", ('tag1',))
-        self.source_cursor.execute("INSERT INTO tags (tag) VALUES (?)", ('tag2',))
-        self.source_cursor.execute("INSERT INTO photo_tags (photo_id, tag_id) VALUES (?, ?)", (1, 1))
-        self.source_cursor.execute("INSERT INTO photo_tags (photo_id, tag_id) VALUES (?, ?)", (1, 2))
+        self.source_cursor.execute("INSERT INTO photos (md5sum, path, width, height, tags) VALUES (?, ?, ?, ?, ?)", ('md5_1', 'path/to/photo1', 0, 0, 'tag1 tag2'))
+        self.source_cursor.execute("INSERT INTO photos (md5sum, path, width, height, tags) VALUES (?, ?, ?, ?, ?)", ('md5_2', 'path/to/photo2', 0, 0, None))
+        #self.source_cursor.execute("INSERT INTO tags (tag) VALUES (?)", ('tag1',))
+        #self.source_cursor.execute("INSERT INTO tags (tag) VALUES (?)", ('tag2',))
+        #self.source_cursor.execute("INSERT INTO photo_tags (photo_id, tag_id) VALUES (?, ?)", (1, 1))
+        #self.source_cursor.execute("INSERT INTO photo_tags (photo_id, tag_id) VALUES (?, ?)", (1, 2))
         self.source_conn.commit()
 
         # Setup destination database
@@ -49,17 +51,15 @@ class TestCopyTags(unittest.TestCase):
 
         # Verify tags were copied
         self.dest_cursor.execute("""
-            SELECT t.tag
+            SELECT p.tags
             FROM photos p
-            JOIN photo_tags pt ON p.id = pt.photo_id
-            JOIN tags t ON pt.tag_id = t.id
             WHERE p.md5sum = 'md5_1'
         """)
         tags = {row[0] for row in self.dest_cursor.fetchall()}
-        self.assertEqual(tags, {'tag1', 'tag2'})
+        self.assertEqual(tags, {'tag1 tag2'})
 
         # Verify photo without matching md5sum was not tagged
-        self.dest_cursor.execute("SELECT COUNT(*) FROM photo_tags WHERE photo_id = 2")
+        self.dest_cursor.execute("SELECT COUNT(*) FROM photos WHERE id = 2 AND tags IS NOT NULL")
         count = self.dest_cursor.fetchone()[0]
         self.assertEqual(count, 0)
 

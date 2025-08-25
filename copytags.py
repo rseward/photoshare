@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import click
 import sqlite3
 from app.database import init_db
@@ -13,10 +15,8 @@ def get_photo_tags(conn):
     """Returns a dictionary mapping md5sum to a list of tags."""
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT p.md5sum, t.tag
+        SELECT p.md5sum, tags
         FROM photos p
-        JOIN photo_tags pt ON p.id = pt.photo_id
-        JOIN tags t ON pt.tag_id = t.id
     """)
     photo_tags_map = {}
     for md5sum, tag in cursor.fetchall():
@@ -24,6 +24,11 @@ def get_photo_tags(conn):
             photo_tags_map[md5sum] = []
         photo_tags_map[md5sum].append(tag)
     return photo_tags_map
+
+def get_photo_tag_counts(conn):
+    cursor = conn.cursor()
+    cursor.execute("SELECT count(1) FROM photos WHERE tags IS NOT NULL")
+    return cursor.fetchone()[0]
 
 @click.command()
 @click.argument('source_db')
@@ -57,26 +62,24 @@ def copy_tags(source_db, dest_db):
     
     dest_cursor = dest_conn.cursor()
     dest_cursor.execute("SELECT id, md5sum FROM photos")
-    dest_photos = dest_cursor.fetchall()
 
-    with tqdm(total=len(dest_photos), desc="Copying tags") as pbar:
-        for photo_id, md5sum in dest_photos:
+    small_cursor = small_conn.cursor()
+    small_cursor.execute("SELECT id, md5sum FROM photos")
+    small_photos = small_cursor.fetchall()
+
+    with tqdm(total=len(small_photos), desc="Copying tags") as pbar:
+        for photo_id, md5sum in small_photos:
             if md5sum in source_photo_tags:
                 tags_to_add = source_photo_tags[md5sum]
                 for tag in tags_to_add:
-                    dest_cursor.execute("INSERT OR IGNORE INTO tags (tag) VALUES (?)", (tag,))
-                    dest_cursor.execute("SELECT id FROM tags WHERE tag = ?", (tag,))
-                    tag_id_result = dest_cursor.fetchone()
-                    if tag_id_result:
-                        tag_id = tag_id_result[0]
-                        dest_cursor.execute(
-                            "INSERT OR IGNORE INTO photo_tags (photo_id, tag_id) VALUES (?, ?)",
-                            (photo_id, tag_id)
-                        )
+                    dest_cursor.execute("UPDATE photos SET tags = ? WHERE md5sum = ?", (tag, md5sum))
             pbar.update(1)
 
     dest_conn.commit()
     click.echo(f"Tags copied successfully from {source_db} to {dest_db}")
+
+    dst_tag_count = get_photo_tag_counts(dest_conn)
+    click.echo(f"Destination database now has {dst_tag_count} photos with tags.")
 
     source_conn.close()
     dest_conn.close()
