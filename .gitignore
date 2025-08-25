@@ -4,7 +4,7 @@ photoshare.db
 *.png
 *.jpg
 .env
-myenv/
+myenv
 ignore.txt
 *.pyc
 .DS_Store
