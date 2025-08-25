@@ -18,8 +18,20 @@ Once I have a sampling of such files.
   - Re-org the photos using the photo-organizer script
   - Re-index the photos to test md5sum index preservation feature.
 
+```bash
+pip install photo-organizer
 
+#Backup photoshare.db
+cp photoshare.db sample/
+photo-organizer -r sample/ neat/
+copytags sample/ neat/
 
+# Reindex reorganized photos. Starting photoshare should do it. Watch for the indexer to finish.
+
+# Restore tags
+./copytags sample/photoshare.db photoshare.db
+```
+Success photos should be reorganized and have their tags restored.
 
 
 
