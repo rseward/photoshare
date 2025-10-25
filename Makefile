@@ -18,8 +18,9 @@ test:
 	pytest
 
 query:
-	sqlite3 photoshare.db
-
+	# pip install litecli
+	#sqlite3 photoshare.db
+	litecli photoshare.db
 lint:
 	ruff check
 	#ruff check --fix
