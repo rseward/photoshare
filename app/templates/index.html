@@ -71,6 +71,7 @@
         let slideshowInterval;
         let isPaused = false;
         let isTagging = false;
+        let shuffleId = null; // Stores the shuffle_id for the current session
 
         function toggleMenu() {
             const menu = document.getElementById('menu');
@@ -82,10 +83,11 @@
                 filenameDisplay.textContent = "Error: API Key not configured on server.";
                 return;
             }
-            
+
             let url;
             const params = new URLSearchParams();
-            
+
+            // Convert 'random' slideshows to 'shuffle' mode for better navigation
             if (slideshowType === 'random' && !tag) {
                 slideshowType = 'sequence';
             }
@@ -97,23 +99,35 @@
                     params.append('current_photo_id', currentPhoto.id);
                     params.append('direction', direction);
                 }
-            } else { 
-                url = '/photos/random';
-                if (tag) {
-                    params.append('tag', tag);
+            } else {
+                // Use shuffle mode instead of random
+                url = '/photos/sequence/shuffle';
+                if (direction && currentPhoto) {
+                    params.append('current_photo_id', currentPhoto.id);
+                    params.append('direction', direction);
+                }
+                // Include shuffle_id if available
+                if (shuffleId !== null) {
+                    params.append('shuffle_id', shuffleId);
                 }
             }
-            
+
             const fullUrl = url + '?' + params.toString();
-            
+
             try {
                 const response = await fetch(fullUrl, {
                     method: 'GET', mode: 'cors',
                     headers: { 'Authorization': `Client-ID ${apiKey}` }
                 });
                 if (!response.ok) throw new Error((await response.json()).detail || "Failed to fetch photo");
-                
+
                 const photoData = await response.json();
+
+                // Store shuffle_id if provided in response
+                if (photoData.shuffle_id !== undefined) {
+                    shuffleId = photoData.shuffle_id;
+                }
+
                 displayPhoto(photoData);
 
             } catch (error) {

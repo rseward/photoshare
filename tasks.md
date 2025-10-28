@@ -4,30 +4,23 @@ A simple lightweight web photosharing app
 
 ## Pending Tasks
 
+## Completed Tasks
+
+### photo slideshow features
+
+- Improve the shuffle slide show feature by generating a random number for a web browser session (shuffle_id). The backend sends the shuffle_id when a browser starts a shuffled slideshow session. The web browser appends this shuffle_id to the backend slideshow endpoint URL parameters. The backend uses the shuffle_id to give an orderly progression of photos back to the client, allowing easy back and forth navigation. Implemented using queries like `ORDER BY (id % shuffle_id), id` where shuffle_id is a random number between 100-10000.
+- Add two rotation buttons to the slideshow. One to rotate the photo clockwise and one to rotate the photo counter clockwise.
+- Pressing the rotate button will rotate the photo 90 degrees clockwise or counter clockwise. The new md5sum of the photo will be computed and the database record will be updated for the photo.
+- The rotation buttons will be hidden by default. They will only be shown when the user hovers over the photo.
+- seperate the slideshow features into the own seperate end points to make the logic more modular.
+- Revise the new photo end point to query the database for the top 1000 photos ordered by datetime_added descending. Select a random photo from this result and return that photo from the "new" endpoint.
+- Create a new unit test for the new photo end point. Verify when the end point is executed in sequence it does not return the same photo.
+
 ### database features
 
 - Add a "datetime_deleted" field in the database to record when a photo is permanently deleted from the photoshare.
   The default value is null, and is populated with a ISO date time string when the file corresponding to the
   file is deleted with the delete_photos.py script.
-
-
-### photo slideshow features
-
-- **CRITICAL** Improve the shuffle slide show feature by generating a random number for a web browser session. We shall
-  call this random number: the shuffle_id. The backend will send the shuffle_id when a browser starts a shuffled
-  slideshow session to the browser. The web browser will append this random number (shuffle_id) to the backend slideshow
-  end points url parameters. The backend will use the random number to give an orderly progression of photos
-  back to the client. E.g. they can easily go back and forth in the slide show. Queries similar to the following
-  will be the basis of the shuffle slideshow.
-  
-  select * from photos order by mod(id, 1025) ;
-
-  Where 1025 is an example of an random number. The mod function will combine the random number (shuffle_id) with photo
-  record ids to produce an orderly shuffle feature.
-
-- Add two rotation buttons to the slideshow. One to rotate the photo clockwise and one to rotate the photo counter clockwise.
-- Pressing the rotate button will rotate the photo 90 degrees clockwise or counter clockwise. The new md5sum of the photo will be computed and the database record will be updated for the photo.
-- The rotation buttons will be hidden by default. They will only be shown when the user hovers over the photo.
 
 ### photo import features
 
@@ -35,8 +28,6 @@ A simple lightweight web photosharing app
   is different from the path recorded in the database record. When such a file is discovered, update it's path in the 
   database record. Leave all other information in the record as is. An identical md5sum with different paths indicates the files was moved between
   photo indexe scans.
-
-### indexer features
 
 ### photo deletion features
 
@@ -50,9 +41,6 @@ A simple lightweight web photosharing app
   If the user presses "d", the file will be moved to the /tmp/ directory. The file will be removed from the deletion list. The photo's datetime_deleted field will be set to the current date in the database. After the last photo has been reviewed the remaining photos (those that were skipped) will be written to the photos_to_delete.txt
   file.
 
-
-## Completed Tasks
-
 ### dashboard features
 
 - Revise the dashboard to have a "View New Photos" button that links to a slideshow page that displays photos that have most recently been added to the database.
@@ -60,7 +48,7 @@ A simple lightweight web photosharing app
 - Revise the dashboard to have a "View All Untagged Photos" button that links to a slideshow page that displays photos that have not yet been tagged.
 - Arrange the dashboard "view" buttons in a grid of 3 columns and 2 rows.
 
-# general geatures
+### general geatures
 
 - At the bottom of the dashboard a tag cloud should appear. The tag cloud should be generated from the tags in the database. The size of each tag in the cloud should be proportional to the number of photos that have that tag.
 - Load and display any tags created for a photo when displaying the photo on the index.html page
@@ -129,10 +117,3 @@ A simple lightweight web photosharing app
 - When eextracting photo EXIF data increment the database metadata_extraction_attempted field along with the datetime_taken and geolocation fields.
 - Add the percentage of files processed to the progress log messages.
 - Modify indexer.py to have an "--folder" option that allows the user to specify a folder to index. If the folder is not specified, index the entire PHOTOSHARE_PHOTO_DIR folder.
-
-
-### new photo slideshow feature
-
-- seperate the slideshow features into the own seperate end points to make the logic more modular.
-- Revise the new photo end point to query the database for the top 1000 photos ordered by datetime_added descending. Select a random photo from this result and return that photo from the "new" endpoint.
-- Create a new unit test for the new photo end point. Verify when the end point is executed in sequence it does not return the same photo.

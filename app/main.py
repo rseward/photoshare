@@ -161,7 +161,8 @@ async def get_photo_sequence(
     sequence_name: str,
     authorization: Optional[str] = Header(None),
     current_photo_id: Optional[int] = None,
-    direction: Optional[str] = None
+    direction: Optional[str] = None,
+    shuffle_id: Optional[int] = None
 ):
     # Authentication
     api_key_env = os.environ.get("PHOTOSHARE_API_KEY")
@@ -171,7 +172,7 @@ async def get_photo_sequence(
     base_query = "SELECT * FROM photos"
     where_clauses = []
     params = []
-    
+
     # Base filter for the sequence
     if sequence_name == 'new':
         where_clauses.append("datetime_added IS NOT NULL AND datetime_added != ''")
@@ -185,6 +186,12 @@ async def get_photo_sequence(
         where_clauses.append("tags IS NULL OR tags = ''")
         order_by_main = "ORDER BY id ASC"
         order_by_rev = "ORDER BY id DESC"
+    elif sequence_name == 'shuffle':
+        # Generate shuffle_id if not provided
+        if shuffle_id is None:
+            shuffle_id = random.randint(100, 10000)
+        order_by_main = f"ORDER BY (id % {shuffle_id}), id"
+        order_by_rev = f"ORDER BY (id % {shuffle_id}) DESC, id DESC"
     else:
         raise HTTPException(status_code=404, detail="Unknown sequence name.")
 
@@ -205,6 +212,17 @@ async def get_photo_sequence(
                     where_clauses.append("(datetime_added > ? OR (datetime_added = ? AND id > ?))")
                     params.extend([current_val, current_val, current_photo_id])
                     order_by = order_by_rev
+            elif sequence_name == 'shuffle':
+                # For shuffle mode, navigate based on mod value
+                current_mod = current_photo_id % shuffle_id
+                if direction == 'next':
+                    where_clauses.append("((id % ?) > ? OR ((id % ?) = ? AND id > ?))")
+                    params.extend([shuffle_id, current_mod, shuffle_id, current_mod, current_photo_id])
+                    order_by = order_by_main
+                else: # previous
+                    where_clauses.append("((id % ?) < ? OR ((id % ?) = ? AND id < ?))")
+                    params.extend([shuffle_id, current_mod, shuffle_id, current_mod, current_photo_id])
+                    order_by = order_by_rev
             else: # Navigation by ID for tagged/untagged
                 if direction == 'next':
                     where_clauses.append("id > ?")
@@ -216,7 +234,7 @@ async def get_photo_sequence(
                     order_by = order_by_rev
 
             where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
-            
+
             query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
             photo = conn.execute(query, tuple(params)).fetchone()
 
@@ -228,12 +246,19 @@ async def get_photo_sequence(
                 top_1000_ids = [row['id'] for row in conn.execute(top_1000_query, tuple(params)).fetchall()]
                 if not top_1000_ids:
                     raise HTTPException(status_code=404, detail="No new photos found.")
-                
+
                 random_id = random.choice(top_1000_ids)
                 query = f"{base_query} WHERE id = ?"
                 photo = conn.execute(query, (random_id,)).fetchone()
+            elif sequence_name == 'shuffle':
+                # For shuffle, start from the first photo in shuffle order
+                where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
+                order_by = order_by_main
+                query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
+                photo = conn.execute(query, tuple(params)).fetchone()
             else:
                 # Original logic for other sequences
+                where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
                 order_by = order_by_main
                 query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
                 photo = conn.execute(query, tuple(params)).fetchone()
@@ -253,7 +278,13 @@ async def get_photo_sequence(
     if not photo:
         raise HTTPException(status_code=404, detail="No photos found for this sequence.")
 
-    return JSONResponse(content=_get_photo_response(photo, request))
+    response_data = _get_photo_response(photo, request)
+
+    # Include shuffle_id in response for shuffle mode
+    if sequence_name == 'shuffle':
+        response_data['shuffle_id'] = shuffle_id
+
+    return JSONResponse(content=response_data)
 
 
 @app.get("/photos/{photo_id}")
