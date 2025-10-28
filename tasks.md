@@ -4,6 +4,10 @@ A simple lightweight web photosharing app
 
 ## Pending Tasks
 
+### photo slideshow features
+
+- For untagged, tagged and new photo slideshow modes, don't stop at the last photo, instead loop back to the first photo in the sequence.
+
 ## Completed Tasks
 
 ### photo slideshow features

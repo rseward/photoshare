@@ -11,3 +11,5 @@ Pillow
 python-dotenv
 tqdm
 
+requests
+rich
