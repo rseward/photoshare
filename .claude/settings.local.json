@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3 photoshare.db \"SELECT id, tags, datetime_deleted FROM photos WHERE id = 7\")",
+      "Bash(sqlite3 photoshare.db \"SELECT * FROM photos WHERE (tags IS NULL OR tags = '''') AND id > 7 AND (datetime_deleted IS NULL OR datetime_deleted = '''') ORDER BY id ASC LIMIT 1\")",
+      "Bash(python -m pytest test_untagged_photo_sequence.py::test_untagged_sequence_wraparound_from_last_photo -v)",
+      "Bash(python -m pytest tests/test_untagged_photo_sequence.py::test_untagged_sequence_wraparound_from_last_photo -v)",
+      "Bash(python -m pytest tests/test_wraparound.py -v)",
+      "Bash(python -m pytest tests/test_new_photo_sequence.py tests/test_filtered_shuffle_sequences.py tests/test_shuffle_sequence.py -v)",
+      "Bash(python -m pytest tests/test_wraparound.py tests/test_new_photo_sequence.py tests/test_filtered_shuffle_sequences.py tests/test_shuffle_sequence.py -v)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
