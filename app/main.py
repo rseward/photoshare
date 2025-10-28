@@ -169,6 +169,8 @@ async def get_photo_sequence(
     if not api_key_env or not authorization or authorization != f"Client-ID {api_key_env}":
         raise HTTPException(status_code=401, detail="Invalid or missing API Key.")
 
+    log.info(f"DEBUG: Sequence request - sequence_name={sequence_name}, current_photo_id={current_photo_id}, direction={direction}, shuffle_id={shuffle_id}")
+
     base_query = "SELECT * FROM photos"
     where_clauses = []
     params = []
@@ -181,6 +183,8 @@ async def get_photo_sequence(
         base_sequence = sequence_name.replace('-shuffle', '')
     else:
         base_sequence = sequence_name
+
+    log.info(f"DEBUG: Parsed sequence - base_sequence={base_sequence}, is_shuffle={is_shuffle}")
 
     # Base filter for the sequence
     if base_sequence == 'new':
@@ -225,6 +229,11 @@ async def get_photo_sequence(
 
     conn = database.get_db_connection()
     try:
+        # DEBUG: Show available photos for this sequence
+        if direction and current_photo_id and base_sequence == 'untagged':
+            debug_photos = conn.execute("SELECT id, tags, datetime_deleted FROM photos WHERE (tags IS NULL OR tags = '') ORDER BY id ASC").fetchall()
+            log.info(f"DEBUG: Available untagged photos: {[(p['id'], p['tags'], p['datetime_deleted']) for p in debug_photos]}")
+
         if direction and current_photo_id:
             current_photo = conn.execute("SELECT id, datetime_added FROM photos WHERE id = ?", (current_photo_id,)).fetchone()
             if not current_photo:
@@ -265,7 +274,9 @@ async def get_photo_sequence(
             where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
 
             query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
+            log.info(f"DEBUG: Executing navigation query - query={query}, params={tuple(params)}")
             photo = conn.execute(query, tuple(params)).fetchone()
+            log.info(f"DEBUG: Navigation query result - photo={photo['id'] if photo else None}")
 
         else:
             # Initial load of the sequence
@@ -288,6 +299,7 @@ async def get_photo_sequence(
 
         # Handle wraparound - loop back to first/last photo when reaching the end
         if not photo and direction:
+            log.info(f"DEBUG: Entering wraparound logic - base_sequence={base_sequence}, direction={direction}")
             # Reset where_clauses to only include the base filter and datetime_deleted
             wrap_where_clauses = []
 
@@ -309,7 +321,9 @@ async def get_photo_sequence(
             else:
                 wrap_query = f"{base_query} {order_by_main if direction == 'next' else order_by_rev} LIMIT 1"
 
+            log.info(f"DEBUG: Executing wraparound query - query={wrap_query}")
             photo = conn.execute(wrap_query).fetchone()
+            log.info(f"DEBUG: Wraparound query result - photo={photo['id'] if photo else None}")
 
     except sqlite3.Error as e:
         log.error(f"Database error in /photos/sequence: {e}")
@@ -318,7 +332,10 @@ async def get_photo_sequence(
         conn.close()
 
     if not photo:
+        log.error(f"DEBUG: No photo found - sequence_name={sequence_name}, current_photo_id={current_photo_id}, direction={direction}")
         raise HTTPException(status_code=404, detail="No photos found for this sequence.")
+
+    log.info(f"DEBUG: Returning photo - id={photo['id']}, path={photo['path']}, tags={photo['tags']}")
 
     response_data = _get_photo_response(photo, request)
 
