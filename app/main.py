@@ -173,21 +173,49 @@ async def get_photo_sequence(
     where_clauses = []
     params = []
 
+    # Check if this is a shuffle variant
+    is_shuffle = sequence_name.endswith('-shuffle') or sequence_name == 'shuffle'
+    if sequence_name == 'shuffle':
+        base_sequence = ''  # Plain shuffle with no filter
+    elif is_shuffle:
+        base_sequence = sequence_name.replace('-shuffle', '')
+    else:
+        base_sequence = sequence_name
+
     # Base filter for the sequence
-    if sequence_name == 'new':
+    if base_sequence == 'new':
         where_clauses.append("datetime_added IS NOT NULL AND datetime_added != ''")
-        order_by_main = "ORDER BY datetime_added DESC, id DESC"
-        order_by_rev = "ORDER BY datetime_added ASC, id ASC"
-    elif sequence_name == 'tagged':
+        if is_shuffle:
+            # Generate shuffle_id if not provided
+            if shuffle_id is None:
+                shuffle_id = random.randint(100, 10000)
+            order_by_main = f"ORDER BY (id % {shuffle_id}), id"
+            order_by_rev = f"ORDER BY (id % {shuffle_id}) DESC, id DESC"
+        else:
+            order_by_main = "ORDER BY datetime_added DESC, id DESC"
+            order_by_rev = "ORDER BY datetime_added ASC, id ASC"
+    elif base_sequence == 'tagged':
         where_clauses.append("tags IS NOT NULL AND tags != ''")
-        order_by_main = "ORDER BY id ASC"
-        order_by_rev = "ORDER BY id DESC"
-    elif sequence_name == 'untagged':
+        if is_shuffle:
+            if shuffle_id is None:
+                shuffle_id = random.randint(100, 10000)
+            order_by_main = f"ORDER BY (id % {shuffle_id}), id"
+            order_by_rev = f"ORDER BY (id % {shuffle_id}) DESC, id DESC"
+        else:
+            order_by_main = "ORDER BY id ASC"
+            order_by_rev = "ORDER BY id DESC"
+    elif base_sequence == 'untagged':
         where_clauses.append("tags IS NULL OR tags = ''")
-        order_by_main = "ORDER BY id ASC"
-        order_by_rev = "ORDER BY id DESC"
-    elif sequence_name == 'shuffle':
-        # Generate shuffle_id if not provided
+        if is_shuffle:
+            if shuffle_id is None:
+                shuffle_id = random.randint(100, 10000)
+            order_by_main = f"ORDER BY (id % {shuffle_id}), id"
+            order_by_rev = f"ORDER BY (id % {shuffle_id}) DESC, id DESC"
+        else:
+            order_by_main = "ORDER BY id ASC"
+            order_by_rev = "ORDER BY id DESC"
+    elif base_sequence == '' and is_shuffle:
+        # Plain shuffle with no filter
         if shuffle_id is None:
             shuffle_id = random.randint(100, 10000)
         order_by_main = f"ORDER BY (id % {shuffle_id}), id"
@@ -202,17 +230,7 @@ async def get_photo_sequence(
             if not current_photo:
                 raise HTTPException(status_code=404, detail="Current photo not found.")
 
-            if sequence_name == 'new':
-                current_val = current_photo['datetime_added']
-                if direction == 'next':
-                    where_clauses.append("(datetime_added < ? OR (datetime_added = ? AND id < ?))")
-                    params.extend([current_val, current_val, current_photo_id])
-                    order_by = order_by_main
-                else: # previous
-                    where_clauses.append("(datetime_added > ? OR (datetime_added = ? AND id > ?))")
-                    params.extend([current_val, current_val, current_photo_id])
-                    order_by = order_by_rev
-            elif sequence_name == 'shuffle':
+            if is_shuffle:
                 # For shuffle mode, navigate based on mod value
                 current_mod = current_photo_id % shuffle_id
                 if direction == 'next':
@@ -222,6 +240,17 @@ async def get_photo_sequence(
                 else: # previous
                     where_clauses.append("((id % ?) < ? OR ((id % ?) = ? AND id < ?))")
                     params.extend([shuffle_id, current_mod, shuffle_id, current_mod, current_photo_id])
+                    order_by = order_by_rev
+            elif base_sequence == 'new':
+                # For 'new' sequence, navigate by datetime_added
+                current_val = current_photo['datetime_added']
+                if direction == 'next':
+                    where_clauses.append("(datetime_added < ? OR (datetime_added = ? AND id < ?))")
+                    params.extend([current_val, current_val, current_photo_id])
+                    order_by = order_by_main
+                else: # previous
+                    where_clauses.append("(datetime_added > ? OR (datetime_added = ? AND id > ?))")
+                    params.extend([current_val, current_val, current_photo_id])
                     order_by = order_by_rev
             else: # Navigation by ID for tagged/untagged
                 if direction == 'next':
@@ -240,7 +269,7 @@ async def get_photo_sequence(
 
         else:
             # Initial load of the sequence
-            if sequence_name == 'new':
+            if base_sequence == 'new' and not is_shuffle:
                 # Get top 1000 newest photos and pick one at random
                 top_1000_query = f"SELECT id FROM photos WHERE {' AND '.join(where_clauses)} {order_by_main} LIMIT 1000"
                 top_1000_ids = [row['id'] for row in conn.execute(top_1000_query, tuple(params)).fetchall()]
@@ -250,23 +279,36 @@ async def get_photo_sequence(
                 random_id = random.choice(top_1000_ids)
                 query = f"{base_query} WHERE id = ?"
                 photo = conn.execute(query, (random_id,)).fetchone()
-            elif sequence_name == 'shuffle':
-                # For shuffle, start from the first photo in shuffle order
-                where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
-                order_by = order_by_main
-                query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
-                photo = conn.execute(query, tuple(params)).fetchone()
             else:
-                # Original logic for other sequences
+                # For shuffle or other sequences, start from the first photo in order
                 where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
                 order_by = order_by_main
                 query = f"{base_query} WHERE {' AND '.join(where_clauses)} {order_by} LIMIT 1"
                 photo = conn.execute(query, tuple(params)).fetchone()
 
-        # Handle wraparound
+        # Handle wraparound - loop back to first/last photo when reaching the end
         if not photo and direction:
-            # The base query for a sequence never has parameters
-            wrap_query = f"{base_query} WHERE {where_clauses[0]} {order_by_main if direction == 'next' else order_by_rev} LIMIT 1"
+            # Reset where_clauses to only include the base filter and datetime_deleted
+            wrap_where_clauses = []
+
+            # Add the base filter for this sequence type
+            if base_sequence == 'new':
+                wrap_where_clauses.append("datetime_added IS NOT NULL AND datetime_added != ''")
+            elif base_sequence == 'tagged':
+                wrap_where_clauses.append("tags IS NOT NULL AND tags != ''")
+            elif base_sequence == 'untagged':
+                wrap_where_clauses.append("tags IS NULL OR tags = ''")
+            # For plain shuffle, no additional filter needed
+
+            # Always filter out deleted photos
+            wrap_where_clauses.append("datetime_deleted IS NULL OR datetime_deleted = ''")
+
+            # Build wraparound query with appropriate ordering
+            if len(wrap_where_clauses) > 0:
+                wrap_query = f"{base_query} WHERE {' AND '.join(wrap_where_clauses)} {order_by_main if direction == 'next' else order_by_rev} LIMIT 1"
+            else:
+                wrap_query = f"{base_query} {order_by_main if direction == 'next' else order_by_rev} LIMIT 1"
+
             photo = conn.execute(wrap_query).fetchone()
 
     except sqlite3.Error as e:
@@ -280,8 +322,8 @@ async def get_photo_sequence(
 
     response_data = _get_photo_response(photo, request)
 
-    # Include shuffle_id in response for shuffle mode
-    if sequence_name == 'shuffle':
+    # Include shuffle_id in response for any shuffle mode
+    if is_shuffle:
         response_data['shuffle_id'] = shuffle_id
 
     return JSONResponse(content=response_data)
@@ -468,17 +510,21 @@ async def slideshow_by_tag(request: Request, tag: str):
     api_key = os.environ.get("PHOTOSHARE_API_KEY", "")
     google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     decoded_tag = unquote_plus(tag)
-    
+
+    # Check for shuffle variants and extract base sequence
+    is_shuffle = decoded_tag.endswith('-shuffle')
+    base_tag = decoded_tag.replace('-shuffle', '') if is_shuffle else decoded_tag
+
     special_filters = ['new', 'tagged', 'untagged']
-    slideshow_type = "sequence" if decoded_tag in special_filters else "random"
-    
+    slideshow_type = "sequence" if base_tag in special_filters or is_shuffle else "random"
+
     conn = database.get_db_connection()
     try:
-        if decoded_tag == 'new':
+        if base_tag == 'new':
             tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE datetime_added IS NOT NULL AND datetime_added != ''").fetchone()[0]
-        elif decoded_tag == 'tagged':
+        elif base_tag == 'tagged':
             tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags IS NOT NULL AND tags != ''").fetchone()[0]
-        elif decoded_tag == 'untagged':
+        elif base_tag == 'untagged':
             tag_photo_count = conn.execute("SELECT COUNT(*) FROM photos WHERE tags IS NULL OR tags = ''").fetchone()[0]
         else:
             tag_pattern = f"%{decoded_tag}%"
@@ -490,8 +536,8 @@ async def slideshow_by_tag(request: Request, tag: str):
         conn.close()
 
     return templates.TemplateResponse("index.html", {
-        "request": request, 
-        "api_key": api_key, 
+        "request": request,
+        "api_key": api_key,
         "google_maps_api_key": google_maps_api_key,
         "slideshow_type": slideshow_type,
         "tag": decoded_tag,

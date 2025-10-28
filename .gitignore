@@ -8,3 +8,13 @@ myenv
 ignore.txt
 *.pyc
 .DS_Store
+
+# Emacs
+*~
+\#*\#
+.\#*
+*.elc
+.emacs.desktop
+.emacs.desktop.lock
+auto-save-list/
+tramp

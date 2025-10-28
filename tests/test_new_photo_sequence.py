@@ -69,33 +69,37 @@ def client_for_new_sequence(monkeypatch, tmp_path):
 
 def test_get_new_photos_returns_correct_sequence(client_for_new_sequence):
     """
-    Tests that the slideshow for 'new' photos returns the entire sequence
-    of photos in the correct order (newest to oldest).
+    Tests that the slideshow for 'new' photos navigates in chronological order (newest to oldest).
+    Note: Initial load randomly selects from top 1000, so we start from a known photo.
     """
     client, api_key = client_for_new_sequence
     headers = {"Authorization": f"Client-ID {api_key}"}
-    
-    # Expected order of photo IDs: 3 (newest), 2, 1 (oldest)
-    expected_ids = [3, 2, 1]
-    actual_ids = []
-    
-    # 1. Fetch the first photo (should be the newest)
-    response = client.get("/photos/sequence/new", headers=headers)
-    assert response.status_code == 200, f"Initial request failed: {response.text}"
-    
+
+    # Expected order when navigating from photo 3: 3 -> 2 -> 1 -> (wraparound to 3)
+    # Photo 3 is the newest, then 2, then 1 (oldest)
+
+    # Start from the newest photo (ID 3) explicitly
+    current_photo_id = 3
+    actual_ids = [current_photo_id]
+
+    # Navigate forward (next should go to older photos: 3 -> 2 -> 1)
+    url = f"/photos/sequence/new?direction=next&current_photo_id={current_photo_id}"
+    response = client.get(url, headers=headers)
+    assert response.status_code == 200, f"Navigation failed: {response.text}"
+
     photo_data = response.json()
     actual_ids.append(photo_data['id'])
+    assert photo_data['id'] == 2, f"After photo 3, should get photo 2, but got {photo_data['id']}"
     current_photo_id = photo_data['id']
 
-    # 2. Fetch the rest of the sequence
-    for _ in range(len(expected_ids) - 1):
-        url = f"/photos/sequence/new?direction=next&current_photo_id={current_photo_id}"
-        response = client.get(url, headers=headers)
-        assert response.status_code == 200, f"Sequential request failed: {response.text}"
-        
-        photo_data = response.json()
-        actual_ids.append(photo_data['id'])
-        current_photo_id = photo_data['id']
+    # Navigate forward again (2 -> 1)
+    url = f"/photos/sequence/new?direction=next&current_photo_id={current_photo_id}"
+    response = client.get(url, headers=headers)
+    assert response.status_code == 200, f"Navigation failed: {response.text}"
 
-    # 3. Verify the entire sequence is correct
-    assert actual_ids == expected_ids, f"The returned sequence {actual_ids} did not match the expected sequence {expected_ids}."
+    photo_data = response.json()
+    actual_ids.append(photo_data['id'])
+    assert photo_data['id'] == 1, f"After photo 2, should get photo 1, but got {photo_data['id']}"
+
+    # Verify we got the correct chronological sequence
+    assert actual_ids == [3, 2, 1], f"Expected chronological sequence [3, 2, 1], got {actual_ids}"

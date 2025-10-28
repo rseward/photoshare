@@ -47,6 +47,7 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             margin-bottom: 40px;
+            max-width: 900px;
         }
         .slideshow-button {
             background-color: rgba(255, 255, 255, 0.2);
@@ -116,10 +117,13 @@
             <p>There are {{ tagged_photo_count }} tagged photos in the database.</p>
         </div>
         <div class="button-grid">
-            <a href="/ui/slideshow" class="slideshow-button">View All Photos</a>
+            <a href="/ui/slideshow" class="slideshow-button">View All Photos (Shuffle)</a>
             <a href="/ui/slideshow/new" class="slideshow-button">View New Photos</a>
+            <a href="/ui/slideshow/new-shuffle" class="slideshow-button">View New Photos (Shuffle)</a>
             <a href="/ui/slideshow/tagged" class="slideshow-button">View Tagged Photos</a>
+            <a href="/ui/slideshow/tagged-shuffle" class="slideshow-button">View Tagged Photos (Shuffle)</a>
             <a href="/ui/slideshow/untagged" class="slideshow-button">View Untagged Photos</a>
+            <a href="/ui/slideshow/untagged-shuffle" class="slideshow-button">View Untagged Photos (Shuffle)</a>
             <a href="/ui/tags" class="slideshow-button">View All Tags</a>
         </div>
         <div class="tag-search">

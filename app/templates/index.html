@@ -99,6 +99,10 @@
                     params.append('current_photo_id', currentPhoto.id);
                     params.append('direction', direction);
                 }
+                // Include shuffle_id if available (for shuffle variants)
+                if (shuffleId !== null) {
+                    params.append('shuffle_id', shuffleId);
+                }
             } else {
                 // Use shuffle mode instead of random
                 url = '/photos/sequence/shuffle';
