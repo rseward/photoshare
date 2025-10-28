@@ -27,7 +27,7 @@
             <button id="delete-button" class="control-button">Delete</button>
             <span id="filename-display"></span>
             {% if tag %}
-            <span class="tag-info">{{ tag_photo_count }} tagged</span>
+            <span class="tag-info"><span id="tag-count">{{ tag_photo_count }}</span> tagged</span>
             {% endif %}
             <span id="tags-display" class="tags-display" title="Photo tags"></span>
             <input type="text" id="tag-input" placeholder="Enter tags...">
@@ -153,12 +153,13 @@
                     slideshowContainer.removeChild(oldImage);
                 }
                 slideshowContainer.insertBefore(img, filenameDisplay.parentElement);
-                currentPhoto = { 
-                    id: photoData.id, 
+                currentPhoto = {
+                    id: photoData.id,
                     imageElement: img,
                     filename: photoData.filename,
                     datetime_taken: photoData.datetime_taken,
-                    geolocation: photoData.geolocation
+                    geolocation: photoData.geolocation,
+                    previousTags: photoData.tags || ''
                 };
                 filenameDisplay.textContent = photoData.filename;
                 tagInput.value = photoData.tags || '';
@@ -239,6 +240,9 @@
                 if (event.key === 'Enter' && currentPhoto) {
                     event.preventDefault();
                     const tags = tagInput.value;
+                    const wasUntagged = !currentPhoto.previousTags || currentPhoto.previousTags.trim() === '';
+                    const isNowTagged = tags && tags.trim() !== '';
+
                     try {
                         const response = await fetch(`/photo/tag/${currentPhoto.id}`, {
                             method: 'POST', mode: 'cors',
@@ -249,6 +253,19 @@
                             body: JSON.stringify({ tags: tags })
                         });
                         if (!response.ok) throw new Error((await response.json()).detail || "Failed to save tags");
+
+                        // Update the tag count display if photo went from untagged to tagged
+                        if (wasUntagged && isNowTagged) {
+                            const tagCountElement = document.getElementById('tag-count');
+                            if (tagCountElement) {
+                                const currentCount = parseInt(tagCountElement.textContent) || 0;
+                                tagCountElement.textContent = currentCount + 1;
+                            }
+                        }
+
+                        // Update the previousTags to reflect the new state
+                        currentPhoto.previousTags = tags;
+
                         tagInput.style.backgroundColor = '#005000';
                         setTimeout(() => { tagInput.style.backgroundColor = ''; }, 1000);
                     } catch (error) {

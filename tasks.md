@@ -4,9 +4,9 @@ A simple lightweight web photosharing app
 
 ## Pending Tasks
 
-### photo slideshow features
+### tag entry features
 
-- For untagged, tagged and new photo slideshow modes, don't stop at the last photo, instead loop back to the first photo in the sequence.
+- When a user enters a tag into the tag entry field, if the UI is displaying the number of photos that have been tagged. Inaccurately update the total when a new tag is entered as a form of visual feedback to the user for the entry. Do not query for a new total, the JS should just increment the displayed total by 1.
 
 ## Completed Tasks
 
@@ -21,6 +21,7 @@ A simple lightweight web photosharing app
 - seperate the slideshow features into the own seperate end points to make the logic more modular.
 - Revise the new photo end point to query the database for the top 1000 photos ordered by datetime_added descending. Select a random photo from this result and return that photo from the "new" endpoint.
 - Create a new unit test for the new photo end point. Verify when the end point is executed in sequence it does not return the same photo.
+- For untagged, tagged and new photo slideshow modes, don't stop at the last photo, instead loop back to the first photo in the sequence.
 
 ### database features
 
