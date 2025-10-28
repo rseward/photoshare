@@ -13,6 +13,18 @@ A simple lightweight web photosharing app
 
 ### photo slideshow features
 
+- **CRITICAL** Improve the shuffle slide show feature by generating a random number for a web browser session. We shall
+  call this random number: the shuffle_id. The backend will send the shuffle_id when a browser starts a shuffled
+  slideshow session to the browser. The web browser will append this random number (shuffle_id) to the backend slideshow
+  end points url parameters. The backend will use the random number to give an orderly progression of photos
+  back to the client. E.g. they can easily go back and forth in the slide show. Queries similar to the following
+  will be the basis of the shuffle slideshow.
+  
+  select * from photos order by mod(id, 1025) ;
+
+  Where 1025 is an example of an random number. The mod function will combine the random number (shuffle_id) with photo
+  record ids to produce an orderly shuffle feature.
+
 - Add two rotation buttons to the slideshow. One to rotate the photo clockwise and one to rotate the photo counter clockwise.
 - Pressing the rotate button will rotate the photo 90 degrees clockwise or counter clockwise. The new md5sum of the photo will be computed and the database record will be updated for the photo.
 - The rotation buttons will be hidden by default. They will only be shown when the user hovers over the photo.
