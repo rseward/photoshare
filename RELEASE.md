@@ -1,5 +1,25 @@
 # Release Notes
 
+## v0.4.0
+
+### Features
+
+- **Slideshow:**
+    - Implemented a wrap-around feature for slideshows.
+    - Revised the tagged, untagged, and new slideshow sequences.
+    - Fixed issues with the untagged slideshow.
+- **Shuffle:**
+    - Refactored and improved the shuffle feature.
+- **Tagging:**
+    - Improved tag entry feedback by incrementing the tag count.
+- **`copytags` script:**
+    - Bug fixes and improvements for the `copytags` script.
+
+### Other
+
+- Updated the database query for better performance.
+- Added notes on the photo re-organization.
+
 ## v0.3.0
 
 ### Features
