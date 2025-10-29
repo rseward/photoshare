@@ -18,3 +18,4 @@ ignore.txt
 .emacs.desktop.lock
 auto-save-list/
 tramp
+pub.sh
