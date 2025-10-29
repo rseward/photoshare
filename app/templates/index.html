@@ -27,7 +27,7 @@
             <button id="delete-button" class="control-button">Delete</button>
             <span id="filename-display"></span>
             {% if tag %}
-            <span class="tag-info"><span id="tag-count">{{ tag_photo_count }}</span> tagged</span>
+            <span class="tag-info"><span id="tag-count">{{ tag_photo_count }}</span> <span id="tag-label">{% if tag == 'untagged' or tag == 'untagged-shuffle' %}untagged{% else %}tagged{% endif %}</span></span>
             {% endif %}
             <span id="tags-display" class="tags-display" title="Photo tags"></span>
             <input type="text" id="tag-input" placeholder="Enter tags...">
@@ -165,6 +165,12 @@
                 tagInput.value = photoData.tags || '';
                 updatePhotoMetadata();
             };
+            img.onerror = async () => {
+                console.error(`Failed to load image: ${imageUrl}`);
+                // Try to fetch the next photo automatically
+                console.log('Attempting to load next photo due to image error...');
+                await fetchAndDisplayPhoto('next');
+            };
         }
 
         function updatePhotoMetadata() {
@@ -259,7 +265,12 @@
                             const tagCountElement = document.getElementById('tag-count');
                             if (tagCountElement) {
                                 const currentCount = parseInt(tagCountElement.textContent) || 0;
-                                tagCountElement.textContent = currentCount + 1;
+                                // For untagged slideshow, decrement count; for others, increment
+                                if (tag === 'untagged' || tag === 'untagged-shuffle') {
+                                    tagCountElement.textContent = Math.max(0, currentCount - 1);
+                                } else {
+                                    tagCountElement.textContent = currentCount + 1;
+                                }
                             }
                         }
 

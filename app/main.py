@@ -339,10 +339,30 @@ async def get_photo_file(photo_id: int):
         raise HTTPException(status_code=500, detail="Database error.")
     finally:
         conn.close()
-        
+
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found.")
-    
+
+    # Check if the file exists before serving it
+    photo_path = Path(photo['path'])
+    if not photo_path.exists():
+        log.error(f"Photo file does not exist: {photo['path']} (photo_id: {photo_id})")
+        # Mark the photo for deletion since the file is missing
+        conn = database.get_db_connection()
+        try:
+            db_dir = Path(database.get_db_path()).parent
+            delete_file = db_dir / "photos_to_delete.txt"
+            with open(delete_file, "a") as f:
+                f.write(f"{photo['path']}\n")
+            conn.execute("DELETE FROM photos WHERE id = ?", (photo_id,))
+            conn.commit()
+            log.info(f"Removed missing photo from database: {photo_id}")
+        except Exception as e:
+            log.error(f"Error marking missing photo for deletion: {e}")
+        finally:
+            conn.close()
+        raise HTTPException(status_code=410, detail="Photo file no longer exists and has been removed from the database.")
+
     return FileResponse(photo['path'])
 
 @app.post("/photo/delete/{photo_id}", status_code=204)
